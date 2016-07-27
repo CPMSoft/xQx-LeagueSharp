@@ -25,8 +25,9 @@ namespace Marksman.Champions
 
             W = new Spell(SpellSlot.W);
 
-            E = new Spell(SpellSlot.E, 800);
-            E.SetSkillshot(0.5f, 100f, float.MaxValue, false, SkillshotType.SkillshotCircle);
+            E = new Spell(SpellSlot.E, 1000);
+            E.SetSkillshot(0.5f, 330f, float.MaxValue, false, SkillshotType.SkillshotCircle);
+
             Obj_AI_Base.OnProcessSpellCast += Obj_AI_Base_OnProcessSpellCast;
 
             Utils.Utils.PrintMessage("MissFortune loaded.");
