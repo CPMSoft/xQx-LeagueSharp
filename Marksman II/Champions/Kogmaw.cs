@@ -35,6 +35,9 @@ namespace Marksman.Champions
             Q.SetSkillshot(0.25f, 70f, 1650f, true, SkillshotType.SkillshotLine);
             E.SetSkillshot(0.50f, 120f, 1350, false, SkillshotType.SkillshotLine);
             R.SetSkillshot(1.2f, 120f, float.MaxValue, false, SkillshotType.SkillshotCircle);
+
+            //if (Program.Config != null)
+            CreateRMenu();
         }
 
         public override void Drawing_OnDraw(EventArgs args)
@@ -127,6 +130,7 @@ namespace Marksman.Champions
 
         public override void Game_OnUpdate(EventArgs args)
         {
+            //Game.PrintChat(ObjectManager.Player.BaseAbilityDamage.ToString() + " : " + ObjectManager.Player.BaseAttackDamage.ToString());
             UltiBuffStacks = GetUltimateBuffStacks();
 
             W.Range = 110 + 20*ObjectManager.Player.Spellbook.GetSpell(SpellSlot.W).Level;
@@ -166,7 +170,7 @@ namespace Marksman.Champions
                 //if (Q.Cast(t) == Spell.CastStates.SuccessfullyCasted)
                 //    return;
             }
-            if (R.IsReady() && t.IsValidTarget(R.Range))
+            if (R.IsReady() && t.IsValidTarget(R.Range) && t.HealthPercent <= Program.Config.Item(t.ChampionName + "RHPPercent").GetValue<Slider>().Value)
                 //if (GetValue<bool>("UseRSC") && R.IsReady() && t.IsValidTarget(R.Range))
                 {
                 if (t.IsValidTarget() &&
@@ -179,7 +183,7 @@ namespace Marksman.Champions
                 }
             }
 
-            if (useR && R.IsReady() && UltiBuffStacks < rLim && t.IsValidTarget(R.Range))
+            if (useR && R.IsReady() && UltiBuffStacks < rLim && t.IsValidTarget(R.Range) && t.HealthPercent <= Program.Config.Item(t.ChampionName + "RHPPercent").GetValue<Slider>().Value)
             {
                 CastR(t);
                 //R.Cast(t, false, true);
@@ -224,7 +228,6 @@ namespace Marksman.Champions
                         var lastMana = ObjectManager.Player.Mana - ObjectManager.Player.Spellbook.GetSpell(args.Slot).ManaCost;
                         if (lastMana < ObjectManager.Player.Spellbook.GetSpell(SpellSlot.W).ManaCost)
                         {
-                    Game.PrintChat("Saved mana for W");
                     args.Process = false;
                             
                         }
@@ -238,6 +241,20 @@ namespace Marksman.Champions
             return (from buff in ObjectManager.Player.Buffs
                 where buff.DisplayName.ToLower() == "kogmawlivingartillery"
                 select buff.Count).FirstOrDefault();
+        }
+
+        private void CreateRMenu()
+        {
+            var nMenuR = new Menu("R Cast Settings", "R.Settings").SetFontStyle(FontStyle.Regular, SharpDX.Color.Aqua);
+            {
+                //nMenuR.AddItem(new MenuItem("R.Settings.Desc"));
+                foreach (var hero in HeroManager.Enemies)
+                {
+                    var nMenuItem = new MenuItem(hero.ChampionName + "RHPPercent", hero.ChampionName).SetValue(new Slider(50, 0, 100)).SetTooltip("Cast R if " + hero.ChampionName + " HP Percent <= Selected value");
+                    nMenuR.AddItem(nMenuItem);
+                }
+            }
+            Program.Config.AddSubMenu(nMenuR);
         }
 
         public override bool ComboMenu(Menu config)
