@@ -171,12 +171,12 @@ namespace Marksman
                 nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.Prediction", "Prediction:"))
                     .SetValue(new StringList(new[] {"LeagueSharp Common", "SPrediction (Synx)"}))
                     .SetFontStyle(FontStyle.Regular, SharpDX.Color.Gray);
-                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.AutoLevel", "Auto Leveller:")).SetValue(false);
-                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.AutoBush", "Auto Bush Ward:")).SetValue(false);
+                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.AutoLevel", "Auto Leveller:")).SetValue(true);
+                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.AutoBush", "Auto Bush Ward:")).SetValue(true);
                 nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.AutoPink", "Auto Pink Ward:"))
-                    .SetValue(false)
+                    .SetValue(true)
                     .SetTooltip("For rengar / vayne / shaco etc.");
-                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.Skin", "Skin Manager:")).SetValue(false);
+                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.Skin", "Skin Manager:")).SetValue(true);
                 nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.Emote", "Emote:")).SetValue(false);
                 nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.BuffTimer", "Buff Time Manager:"))
                     .SetValue(false)
