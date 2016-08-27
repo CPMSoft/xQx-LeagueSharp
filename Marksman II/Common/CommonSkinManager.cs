@@ -45,7 +45,7 @@ namespace Marksman.Common
                         strSkins = new[]
                         {
                             "Classic Ezreal", "Nottingham Ezreal", "Striker Ezreal", "Frosted Ezreal", "Explorer Ezreal",
-                            "Pulsefire Ezreal", "TPA Ezreal", "Deboniar Ezreal", "Ace of Spades Ezreal"
+                            "Pulsefire Ezreal", "TPA Ezreal", "Deboniar Ezreal", "Ace of Spades Ezreal", "Arcade Ezreal"
                         };
                         break;
                     }
