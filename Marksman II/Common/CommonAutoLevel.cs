@@ -19,12 +19,12 @@ namespace Marksman.Common
         {
 
             MenuLocal = new Menu("Auto Level", "Auto Level").SetFontStyle(FontStyle.Regular, Color.Aquamarine);
-            MenuLocal.AddItem(new MenuItem("AutoLevel.Set", "at Start:").SetValue(new StringList(new[] { "Allways Off", "Allways On", "Remember Last Settings" }, 2)));
+            MenuLocal.AddItem(new MenuItem("AutoLevel.Set", "at StartTime:").SetValue(new StringList(new[] { "Allways Off", "Allways On", "Remember Last Settings" }, 2)));
             MenuLocal.AddItem(new MenuItem("AutoLevel.Active", "Auto Level Active!").SetValue(new KeyBind("L".ToCharArray()[0], KeyBindType.Toggle))).Permashow(true, ObjectManager.Player.ChampionName + " | " + "Auto Level Up", Color.GreenYellow);
 
 
             //MenuLocal = new Menu("Auto Level", "Auto Level").SetFontStyle(FontStyle.Regular, Color.IndianRed);
-            //MenuLocal.AddItem(new MenuItem("AutoLevel.Set", "at Start:").SetValue(new StringList(new[] { "Allways Off", "Allways On", "Remember Last Settings" }, 2)));
+            //MenuLocal.AddItem(new MenuItem("AutoLevel.Set", "at StartTime:").SetValue(new StringList(new[] { "Allways Off", "Allways On", "Remember Last Settings" }, 2)));
             //MenuLocal.AddItem(new MenuItem("AutoLevel.Active", "Auto Level Active!").SetValue(true));
             
             var championName = ObjectManager.Player.ChampionName.ToLowerInvariant();
@@ -37,7 +37,8 @@ namespace Marksman.Common
                     break;
 
                 case "caitlyn":
-                    SpellLevels = new int[] { 1, 2, 3, 1, 1, 4, 1, 3, 1, 3, 4, 3, 3, 2, 2, 4, 2, 2 };
+                    SpellLevels = new int[] { 1, 2, 3, 2, 2, 4, 2, 1, 2, 1, 4, 1, 1, 3, 3, 4, 3, 3};
+                    //SpellLevels = new int[] { 1, 2, 3, 1, 1, 4, 1, 3, 1, 3, 4, 3, 3, 2, 2, 4, 2, 2 };
                     //MenuLocal.AddItem(new MenuItem("AutoLevel." + championName, GetLevelList(SpellLevels)));
                     break;
 
@@ -79,6 +80,11 @@ namespace Marksman.Common
                     //MenuLocal.AddItem(new MenuItem("AutoLevel." + championName, GetLevelList(SpellLevels)));
                     break;
 
+                case "jhin":
+                    SpellLevels = new int[] { 1, 2, 1, 3, 1, 4, 1, 2, 1, 2, 4, 2, 2, 3, 3, 4, 3, 3 };
+                    //MenuLocal.AddItem(new MenuItem("AutoLevel." + championName, GetLevelList(SpellLevels)));
+                    break;
+
                 case "kalista":
                     SpellLevels = new int[] { 2, 3, 1, 3, 3, 4, 3, 1, 3, 1, 4, 1, 1, 2, 2, 4, 2, 2 };
                     //MenuLocal.AddItem(new MenuItem("AutoLevel." + championName, GetLevelList(SpellLevels)));
@@ -91,7 +97,7 @@ namespace Marksman.Common
 
                 case "kogmaw":
                     SpellLevels = ObjectManager.Player.PercentMagicDamageMod
-                                  > ObjectManager.Player.PercentPhysicalDamageMod
+                                  < ObjectManager.Player.PercentPhysicalDamageMod
                                       ? new int[] { 2, 1, 3, 2, 2, 4, 2, 1, 2, 1, 4, 1, 1, 3, 3, 4, 3, 3 }
                                       : new int[] { 3, 2, 1, 3, 3, 4, 3, 1, 3, 1, 4, 1, 1, 2, 2, 4, 2, 2 };
                     //MenuLocal.AddItem(new MenuItem("AutoLevel." + championName, GetLevelList(SpellLevels)));
@@ -138,7 +144,7 @@ namespace Marksman.Common
                     break;
 
                 case "vayne":
-                    SpellLevels = new int[] { 1, 3, 2, 2, 2, 4, 2, 1, 2, 1, 4, 1, 1, 3, 3, 4, 3, 3 };
+                    SpellLevels = new int[] { 1, 2, 3, 2, 2, 4, 2, 1, 2, 1, 4, 1, 1, 3, 3, 4, 3, 3 };
                     //MenuLocal.AddItem(new MenuItem("AutoLevel." + championName, GetLevelList(SpellLevels)));
                     break;
 
@@ -162,7 +168,7 @@ namespace Marksman.Common
             }
 
             nParentMenu.AddSubMenu(MenuLocal);
-            Game.OnUpdate += Game_OnUpdate;
+            Game.OnUpdate += GameOnUpdate;
         }
 
         private static string GetLevelList(int[] spellLevels)
@@ -172,16 +178,7 @@ namespace Marksman.Common
             return b != "" ? b.Substring(0, b.Length - 2) : "";
         }
 
-        private static int GetRandomDelay
-        {
-            get
-            {
-                var rnd = new Random(DateTime.Now.Millisecond);
-                return rnd.Next(750, 1000);
-            }
-            
-        }
-        private static void Game_OnUpdate(EventArgs args)
+        private static void GameOnUpdate(EventArgs args)
         {
             if (!MenuLocal.Item("AutoLevel.Active").GetValue<KeyBind>().Active)
             {
@@ -206,23 +203,23 @@ namespace Marksman.Common
 
             if (qLevel < level[0])
             {
-                Utility.DelayAction.Add(GetRandomDelay, () => ObjectManager.Player.Spellbook.LevelSpell(SpellSlot.Q));
+                Utility.DelayAction.Add(CommonUtils.GetRandomDelay(750, 1000), () => ObjectManager.Player.Spellbook.LevelSpell(SpellSlot.Q));
 
             }
 
             if (wLevel < level[1])
             {
-                Utility.DelayAction.Add(GetRandomDelay, () => ObjectManager.Player.Spellbook.LevelSpell(SpellSlot.W));
+                Utility.DelayAction.Add(CommonUtils.GetRandomDelay(750, 1000), () => ObjectManager.Player.Spellbook.LevelSpell(SpellSlot.W));
             }
 
             if (eLevel < level[2])
             {
-                Utility.DelayAction.Add(GetRandomDelay, () => ObjectManager.Player.Spellbook.LevelSpell(SpellSlot.E));
+                Utility.DelayAction.Add(CommonUtils.GetRandomDelay(750, 1000), () => ObjectManager.Player.Spellbook.LevelSpell(SpellSlot.E));
             }
 
             if (rLevel < level[3])
             {
-                Utility.DelayAction.Add(GetRandomDelay, () => ObjectManager.Player.Spellbook.LevelSpell(SpellSlot.R));
+                Utility.DelayAction.Add(CommonUtils.GetRandomDelay(750, 1000), () => ObjectManager.Player.Spellbook.LevelSpell(SpellSlot.R));
             }
         }
     }

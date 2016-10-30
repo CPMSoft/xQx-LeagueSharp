@@ -31,11 +31,11 @@ namespace Marksman.Common
             var champions = ObjectManager.Get<Obj_AI_Hero>().ToList();
 
             EnemyInfo = HeroManager.Enemies.Select(e => new EnemyHeros(e)).ToList();
-            Game.OnUpdate += Game_OnUpdate;
+            Game.OnUpdate += GameOnUpdate;
             
         }
 
-        private void Game_OnUpdate(EventArgs args)
+        private void GameOnUpdate(EventArgs args)
         {
             var time = Environment.TickCount;
             foreach (EnemyHeros enemyInfo in EnemyInfo.Where(x => x.Player.IsVisible))
@@ -144,7 +144,7 @@ namespace Marksman.Common
 
             ChampionSpell = GetSpell();
 
-            Game.OnUpdate += Game_OnUpdate;
+            Game.OnUpdate += GameOnUpdate;
         }
 
         private static Spell GetSpell()
@@ -202,7 +202,7 @@ namespace Marksman.Common
                 .FirstOrDefault(x => x.Name == name && x.Distance(pos) <= maxDistance);
         }
 
-        private static void Game_OnUpdate(EventArgs args)
+        private static void GameOnUpdate(EventArgs args)
         {
             int time = Environment.TickCount;
 

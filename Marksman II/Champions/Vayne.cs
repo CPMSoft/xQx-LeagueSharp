@@ -28,10 +28,17 @@ namespace Marksman.Champions
 
             E.SetTargetted(0.25f, 2200f);
 
-            AntiGapcloser.OnEnemyGapcloser += AntiGapcloser_OnEnemyGapcloser;
-            Interrupter2.OnInterruptableTarget += Interrupter2_OnInterruptableTarget;
-
             Utils.Utils.PrintMessage("Vayne loaded");
+        }
+
+
+        public override void Obj_AI_Base_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
+        {
+            if (!Q.IsReady()) return;
+
+            if (args.Target != null && args.Target.IsMe && sender.Type == GameObjectType.obj_AI_Hero && sender.IsEnemy && sender.IsMelee && args.SData.IsAutoAttack())
+                //if (MenuProvider.Champion.Misc.GetBoolValue("Use Anti-Melee (E)"))
+                Q.Cast(ObjectManager.Player.Position.Extend(sender.Position, -Q.Range));
         }
 
         public override void Spellbook_OnCastSpell(Spellbook sender, SpellbookCastSpellEventArgs args)
@@ -47,16 +54,25 @@ namespace Marksman.Champions
                 : 0;
         }
 
-        public void AntiGapcloser_OnEnemyGapcloser(ActiveGapcloser gapcloser)
+        public override void AntiGapcloser_OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
-            if (GetValue<bool>("UseEGapcloser") && E.IsReady() && gapcloser.Sender.IsValidTarget(E.Range))
-                E.CastOnUnit(gapcloser.Sender);
+            if (GetValue<bool>("Misc.E.Antigapcloser"))
+                    if (gapcloser.End.Distance(ObjectManager.Player.Position) <= 200)
+                        if (E.IsReady())
+                            if (gapcloser.Sender.IsValidTarget(E.Range))
+                                E.CastOnUnit(gapcloser.Sender);
+
+            if (GetValue<bool>("Misc.Q.Antigapcloser") && Q.IsReady() && gapcloser.Sender.IsValidTarget(Q.Range))
+                Q.CastOnUnit(gapcloser.Sender);
         }
 
-        private void Interrupter2_OnInterruptableTarget(Obj_AI_Hero unit, Interrupter2.InterruptableTargetEventArgs args)
+        public override void Interrupter2_OnInterruptableTarget(Obj_AI_Hero unit, Interrupter2.InterruptableTargetEventArgs args)
         {
-            if (GetValue<bool>("UseEInterrupt") && unit.IsValidTarget(550f))
-                E.Cast(unit);
+            if (GetValue<bool>("UseEInterrupt") && unit.IsValidTarget(E.Range))
+                    if (args.DangerLevel >= Interrupter2.DangerLevel.High)
+                        if (unit.IsValidTarget(E.Range))
+                            if (E.IsReady())
+                                E.CastOnUnit(unit);
         }
 
         private static bool CastE(Obj_AI_Base t)
@@ -74,7 +90,7 @@ namespace Marksman.Champions
             return false;
         }
 
-        public override void Game_OnUpdate(EventArgs args)
+        public override void GameOnUpdate(EventArgs args)
         {
             Orbwalker.SetAttack(Game.Time > rqTumbleBuffEndOfTime);
 
@@ -307,24 +323,26 @@ namespace Marksman.Champions
             config.AddItem(
                 new MenuItem("UseET" + Id, "Use E (Toggle)").SetValue(new KeyBind("T".ToCharArray()[0],
                     KeyBindType.Toggle)));
-            config.AddItem(new MenuItem("UseEInterrupt" + Id, "Use E To Interrupt").SetValue(true));
-            config.AddItem(new MenuItem("UseEGapcloser" + Id, "Use E To Gapcloser").SetValue(true));
+            config.AddItem(new MenuItem("UseEInterrupt" + Id, "E: Interrupt").SetValue(true));
+            
+            config.AddItem(new MenuItem("Misc.Q.Antigapcloser" + Id, "Q: Gapcloser").SetValue(true));
+            config.AddItem(new MenuItem("Misc.E.Antigapcloser" + Id, "E: Gapcloser").SetValue(true));
             config.AddItem(new MenuItem("PushDistance" + Id, "E Push Distance").SetValue(new Slider(425, 475, 300)));
             config.AddItem(new MenuItem("CompleteSilverBuff" + Id, "Complete Silver Buff With Q").SetValue(true));
             return true;
         }
 
-        public override bool LaneClearMenu(Menu config)
+        public override bool LaneClearMenu(Menu menuLane)
         {
-            config.AddItem(new MenuItem("UseQL" + Id, "Use Q").SetValue(true));
+            menuLane.AddItem(new MenuItem("UseQL" + Id, "Use Q").SetValue(true));
             return true;
         }
 
-        public override bool JungleClearMenu(Menu config)
+        public override bool JungleClearMenu(Menu menuJungle)
         {
-            config.AddItem(
+            menuJungle.AddItem(
                 new MenuItem("UseQJ" + Id, "Use Q").SetValue(new StringList(new[] {"Off", "On", "Just big Monsters"}, 2)));
-            config.AddItem(
+            menuJungle.AddItem(
                 new MenuItem("UseEJ" + Id, "Use E").SetValue(new StringList(new[] {"Off", "On", "Just big Monsters"}, 2)));
             return true;
         }
@@ -344,7 +362,6 @@ namespace Marksman.Champions
 
         public override void Drawing_OnDraw(EventArgs args)
         {
-            return;
             var drawE = GetValue<StringList>("DrawE").SelectedIndex;
             if (E.IsReady() && drawE != 0)
             {

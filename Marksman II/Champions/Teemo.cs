@@ -51,7 +51,7 @@ namespace Marksman.Champions
                 }
             };
 
-            Utils.Utils.PrintMessage("Teemo loaded.");
+            Utils.Utils.PrintMessage("Teemo");
         }
 
         public override void Orbwalking_AfterAttack(AttackableUnit unit, AttackableUnit target)
@@ -77,7 +77,7 @@ namespace Marksman.Champions
             }
         }
 
-        public override void Game_OnUpdate(EventArgs args)
+        public override void GameOnUpdate(EventArgs args)
         {
 
             //var lee = HeroManager.Allies.Find(l => l.ChampionName.ToLower() == "leesin");
@@ -94,15 +94,23 @@ namespace Marksman.Champions
             
             if (Q.IsReady() && GetValue<KeyBind>("UseQTH").Active && ToggleActive)
             {
+
                 if (ObjectManager.Player.HasBuff("Recall"))
                     return;
 
                 if (ObjectManager.Player.HasBuff("CamouflageStealth"))
                     return;
 
-                var qTarget = TargetSelector.GetTarget(Q.Range, TargetSelector.DamageType.Physical);
-                if (Q.IsReady() && qTarget.IsValidTarget())
-                    Q.CastOnUnit(qTarget);
+                var t = TargetSelector.GetTarget(Q.Range, TargetSelector.DamageType.Physical);
+
+                if (Q.IsReady() && GetValue<bool>("DontUseQ" + t.ChampionName) == false)
+                {
+                    Q.CastOnUnit(t);
+                }
+
+
+                //if (Q.IsReady() && qTarget.IsValidTarget())
+                //    Q.CastOnUnit(qTarget);
             }
 
             if (ComboActive || HarassActive)
@@ -110,9 +118,11 @@ namespace Marksman.Champions
                 var useQ = GetValue<bool>("UseQ" + (ComboActive ? "C" : "H"));
                 if (useQ)
                 {
-                    var qTarget = TargetSelector.GetTarget(Q.Range, TargetSelector.DamageType.Physical);
-                    if (Q.IsReady() && qTarget.IsValidTarget())
-                        Q.CastOnUnit(qTarget);
+                    var t = TargetSelector.GetTarget(Q.Range, TargetSelector.DamageType.Physical);
+                    if (Q.IsReady() && GetValue<bool>("DontUseQ" + t.ChampionName) == false)
+                    {
+                        Q.CastOnUnit(t);
+                    }
                 }
             }
 
@@ -166,6 +176,16 @@ namespace Marksman.Champions
 
         public override bool HarassMenu(Menu config)
         {
+            config.AddSubMenu(new Menu("Don't Use Q:", "DontUseQ"));
+            {
+                foreach (var enemy in
+                    ObjectManager.Get<Obj_AI_Hero>().Where(enemy => enemy.Team != ObjectManager.Player.Team))
+                {
+                    config.SubMenu("DontUseQ")
+                        .AddItem(
+                            new MenuItem("DontUseQ" + enemy.ChampionName + Id, enemy.ChampionName).SetValue(false));
+                }
+            }
             config.AddItem(new MenuItem("UseQH" + Id, "Use Q").SetValue(false));
             config.AddItem(
                 new MenuItem("UseQTH" + Id, "Use Q (Toggle)").SetValue(new KeyBind("H".ToCharArray()[0],
@@ -187,12 +207,12 @@ namespace Marksman.Champions
             return true;
         }
 
-        public override bool LaneClearMenu(Menu config)
+        public override bool LaneClearMenu(Menu menuLane)
         {
-            config.AddItem(new MenuItem("UseQL" + Id, "Use Q").SetValue(true));
+            menuLane.AddItem(new MenuItem("UseQL" + Id, "Use Q").SetValue(true));
             return true;
         }
-        public override bool JungleClearMenu(Menu config)
+        public override bool JungleClearMenu(Menu menuJungle)
         {
             return true;
         }

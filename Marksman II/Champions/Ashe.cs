@@ -30,19 +30,16 @@ namespace Marksman.Champions
             Q = new Spell(SpellSlot.Q);
             W = new Spell(SpellSlot.W, 1200);
             E = new Spell(SpellSlot.E);
-            R = new Spell(SpellSlot.R, 4000);
+            R = new Spell(SpellSlot.R, 2500);
 
             W.SetSkillshot(250f, (float)(45f * Math.PI / 180), 900f, true, SkillshotType.SkillshotCone);
             E.SetSkillshot(377f, 299f, 1400f, false, SkillshotType.SkillshotLine);
-            R.SetSkillshot(250f, 130f, 1600f, false, SkillshotType.SkillshotLine);
+            R.SetSkillshot(0.25f, 130f, 1600f, false, SkillshotType.SkillshotLine);
 
-            Obj_AI_Base.OnProcessSpellCast += Game_OnProcessSpell;
-            Interrupter2.OnInterruptableTarget += Interrupter2_OnInterruptableTarget;
 
             Utility.HpBarDamageIndicator.DamageToUnit = GetComboDamage;
             Utility.HpBarDamageIndicator.Enabled = true;
-            Drawing.OnEndScene += DrawingOnOnEndScene;
-
+            
             Obj_AI_Base.OnBuffAdd += (sender, args) =>
             {
                 if (!Config.Item("RInterruptable" + Id).GetValue<bool>())
@@ -65,20 +62,12 @@ namespace Marksman.Champions
                 }
             };
 
-            Utils.Utils.PrintMessage("Ashe loaded.");
+            Utils.Utils.PrintMessage("Ashe");
         }
 
-        private static void DrawingOnOnEndScene(EventArgs args)
+        public override void DrawingOnEndScene(EventArgs args)
         {
-            if (ObjectManager.Player.IsDead)
-            {
-                return;
-            }
-
-            if (Drawing.Direct3DDevice == null || Drawing.Direct3DDevice.IsDisposed)
-            {
-                return;
-            }
+            base.DrawingOnEndScene(args);
 
             var x = 0;
             foreach (var b in ObjectManager.Player.Buffs.Where(buff => buff.DisplayName == "AsheQ"))
@@ -113,11 +102,9 @@ namespace Marksman.Champions
 
         public bool IsQActive => ObjectManager.Player.HasBuff("FrostShot");
 
-        private void Interrupter2_OnInterruptableTarget(
-            Obj_AI_Hero unit,
-            Interrupter2.InterruptableTargetEventArgs args)
+        public override void Interrupter2_OnInterruptableTarget(Obj_AI_Hero unit, Interrupter2.InterruptableTargetEventArgs args)
         {
-            if (R.IsReady() && Config.Item("RInterruptable" + Id).GetValue<bool>() && unit.IsValidTarget(1500))
+            if (GetValue<bool>("RInterruptable") && R.IsReady() && unit.IsValidTarget(1500) && args.DangerLevel >= Interrupter2.DangerLevel.High)
             {
                 R.Cast(unit);
             }
@@ -142,20 +129,20 @@ namespace Marksman.Champions
             return fComboDamage;
         }
 
-        public void Game_OnProcessSpell(Obj_AI_Base unit, GameObjectProcessSpellCastEventArgs spell)
+        public override void Obj_AI_Base_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
-            if (!Config.Item("EFlash" + Id).GetValue<bool>() || unit.Team == ObjectManager.Player.Team)
+            if (!Config.Item("EFlash" + Id).GetValue<bool>() || sender.Team == ObjectManager.Player.Team)
             {
                 return;
             }
 
-            if (spell.SData.Name.ToLower() == "summonerflash" && unit.Distance(ObjectManager.Player.Position) < 2000)
+            if (args.SData.Name.ToLower() == "summonerflash" && sender.Distance(ObjectManager.Player.Position) < 2000)
             {
-                E.Cast(spell.End);
+                E.Cast(args.End);
             }
         }
 
-        public override void Game_OnUpdate(EventArgs args)
+        public override void GameOnUpdate(EventArgs args)
         {
             if (!ComboActive)
             {
@@ -188,7 +175,7 @@ namespace Marksman.Champions
                 var t = TargetSelector.GetTarget(W.Range, TargetSelector.DamageType.Physical);
 
                 if (Program.Config.SubMenu("Combo").Item("UseRC").GetValue<bool>() && R.IsReady() &&
-                    t.IsValidTarget(Orbwalking.GetRealAutoAttackRange(null) + 65) && AsheQ >= 2 &&
+                    t.IsValidTarget(Orbwalking.GetRealAutoAttackRange(null) + 300) && AsheQ >= 2 &&
                     t.Health > R.GetDamage(t) + ObjectManager.Player.TotalAttackDamage*4)
                 {
                     R.Cast(t);
@@ -245,7 +232,11 @@ namespace Marksman.Champions
             }
         }
 
-        public override void ExecuteJungleClear()
+        public override void ExecuteCombo()
+        {
+        }
+
+        public override void ExecuteJungle()
         {
             if (Q.IsReady() && AsheQCastReady)
             {
@@ -310,7 +301,7 @@ namespace Marksman.Champions
             }
         }
 
-        public override void ExecuteLaneClear()
+        public override void ExecuteLane()
         {
             if (Q.IsReady() && AsheQCastReady)
             {
@@ -358,6 +349,7 @@ namespace Marksman.Champions
         public override bool ComboMenu(Menu config)
         {
             config.AddItem(new MenuItem("UseWC" + Id, "W").SetValue(true));
+            config.AddItem(new MenuItem("Combo.Use.R.Urf" + Id, "R:").SetValue(true));
 
             var xRMenu = new Menu("R", "ComboR");
             {
@@ -380,11 +372,11 @@ namespace Marksman.Champions
         {
             config.AddItem(new MenuItem("UseWH" + Id, "W").SetValue(true));
             config.AddItem(
-                new MenuItem("UseWTH", "Use W (Toggle)").SetValue(new KeyBind("H".ToCharArray()[0], KeyBindType.Toggle)));
+                new MenuItem("UseWTH", "Use W (Toggle)").SetValue(new KeyBind("H".ToCharArray()[0], KeyBindType.Toggle))).Permashow(true, "Marksman | Toggle W");
             return true;
         }
 
-        public override bool LaneClearMenu(Menu config)
+        public override bool LaneClearMenu(Menu menuLane)
         {
             string[] strQ = new string[7];
             strQ[0] = "Off";
@@ -394,7 +386,7 @@ namespace Marksman.Champions
                 strQ[i] = "If need to AA more than >= " + i;
             }
 
-            config.AddItem(new MenuItem("UseQ.Lane" + Id, Utils.Utils.Tab + "Use Q:").SetValue(new StringList(strQ, 0)));
+            menuLane.AddItem(new MenuItem("UseQ.Lane" + Id, Utils.Utils.Tab + "Use Q:").SetValue(new StringList(strQ, 0)));
 
             string[] strW = new string[5];
             strW[0] = "Off";
@@ -404,18 +396,18 @@ namespace Marksman.Champions
                 strW[i] = "If W it'll Hit >= " + i;
             }
 
-            config.AddItem(new MenuItem("UseW.Lane" + Id, Utils.Utils.Tab + "Use W:").SetValue(new StringList(strW, 0)));
+            menuLane.AddItem(new MenuItem("UseW.Lane" + Id, Utils.Utils.Tab + "Use W:").SetValue(new StringList(strW, 0)));
 
-            config.AddItem(
+            menuLane.AddItem(
                 new MenuItem("UseQ.Lane.UnderTurret" + Id, Utils.Utils.Tab + "Always Use Q Under Ally Turrent:")
                     .SetValue(true));
-            config.AddItem(
+            menuLane.AddItem(
                 new MenuItem("UseW.Lane.UnderTurret" + Id, Utils.Utils.Tab + "Always Use W Under Ally Turrent:")
                     .SetValue(true));
             return true;
         }
 
-        public override bool JungleClearMenu(Menu config)
+        public override bool JungleClearMenu(Menu menuJungle)
         {
             string[] strQ = new string[8];
             {
@@ -427,7 +419,7 @@ namespace Marksman.Champions
                     strQ[i] = "If need to AA more than >= " + i;
                 }
 
-                config.AddItem(new MenuItem("UseQJ" + Id, "Use Q").SetValue(new StringList(strQ, 4)));
+                menuJungle.AddItem(new MenuItem("UseQJ" + Id, "Use Q").SetValue(new StringList(strQ, 4)));
             }
 
             string[] strW = new string[4];
@@ -440,7 +432,7 @@ namespace Marksman.Champions
                     strW[i] = "If Mobs Count >= " + i;
                 }
 
-                config.AddItem(new MenuItem("UseWJ" + Id, "Use W").SetValue(new StringList(strW, 1)));
+                menuJungle.AddItem(new MenuItem("UseWJ" + Id, "Use W").SetValue(new StringList(strW, 1)));
             }
             return true;
         }
@@ -454,16 +446,15 @@ namespace Marksman.Champions
 
         public override bool MiscMenu(Menu config)
         {
+            config.AddItem(new MenuItem("Misc.R.Immobile" + Id, "R: Immobile").SetValue(true));
             config.AddItem(new MenuItem("RInterruptable" + Id, "Auto R Interruptable Spells").SetValue(true));
             config.AddItem(new MenuItem("EFlash" + Id, "Use E against Flashes").SetValue(true));
-            config.AddItem(new MenuItem("RManualCast" + Id, "Cast R Manually(2000 range)"))
-                .SetValue(new KeyBind('T', KeyBindType.Press));
+            config.AddItem(new MenuItem("RManualCast" + Id, "Cast R Manually(2000 range)")).SetValue(new KeyBind('T', KeyBindType.Press));
             return true;
         }
 
         public override void Drawing_OnDraw(EventArgs args)
         {
-        
             //foreach (var e in HeroManager.Enemies.Where(e => e.IsValidTarget(3500)))
             //{
             //    var x = new Geometry.Polygon.Line(e.Position, e.Path[0]);
@@ -491,6 +482,21 @@ namespace Marksman.Champions
                 var maxRRange = Program.Config.SubMenu("Combo").Item("UseRCMaxRange").GetValue<Slider>().Value;
                 Render.Circle.DrawCircle(ObjectManager.Player.Position, maxRRange, drawRMax.Color, 2);
             }
+        }
+
+        public override void PermaActive()
+        {
+            if (GetValue<bool>("Misc.R.Immobile"))
+            {
+                var rTarget =
+                    HeroManager.Enemies.FirstOrDefault(
+                        x =>
+                            R.GetPrediction(x).Hitchance >= HitChance.High && x.IsValidTarget(R.Range) &&
+                            x.IsImmobileUntil() > x.Distance(ObjectManager.Player.ServerPosition)/R.Speed);
+                if (rTarget != null)
+                    R.Cast(rTarget);
+            }
+            base.PermaActive();
         }
     }
 }

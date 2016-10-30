@@ -5,6 +5,7 @@ using System.Linq;
 using System.Resources;
 using LeagueSharp;
 using LeagueSharp.Common;
+using Marksman.Common;
 using Marksman.Orb;
 using Orbwalking = Marksman.Orb.Orbwalking;
 
@@ -14,7 +15,7 @@ namespace Marksman.Champions
 {
     internal class MissFortune : Champion
     {
-        public static Spell Q, W, E;
+        public static Spell Q, Q1, W, E;
         private static float UltiCastedTime = 0;
         public static Obj_AI_Hero Player = ObjectManager.Player;
 
@@ -23,14 +24,15 @@ namespace Marksman.Champions
             Q = new Spell(SpellSlot.Q, 650);
             Q.SetTargetted(0.29f, 1400f);
 
+            Q1 = new Spell(SpellSlot.Q, Q.Range + 450f);
+
             W = new Spell(SpellSlot.W);
 
             E = new Spell(SpellSlot.E, 1000);
             E.SetSkillshot(0.5f, 330f, float.MaxValue, false, SkillshotType.SkillshotCircle);
-
             Obj_AI_Base.OnProcessSpellCast += Obj_AI_Base_OnProcessSpellCast;
 
-            Utils.Utils.PrintMessage("MissFortune loaded.");
+            Utils.Utils.PrintMessage("MissFortune");
         }
 
         public override void Obj_AI_Base_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
@@ -54,6 +56,85 @@ namespace Marksman.Champions
                 {
                     W.CastOnUnit(ObjectManager.Player);
                     
+                }
+            }
+        }
+
+        private static bool HasPassiveDebuff(Obj_AI_Hero target)
+        {
+            return target.HasBuff("missfortunepassive");
+        }
+
+
+        private static void CastQ1()
+        {
+            var target = TargetSelector.GetTarget(Q.Range, TargetSelector.DamageType.Physical);
+            if (target != null)
+            {
+                Q.CastOnUnit(target);
+            }
+            else if (1 == 1)
+            {
+                target = TargetSelector.GetTarget(Q1.Range, TargetSelector.DamageType.Physical);
+                if (target != null)
+                {
+                    var heroPositions = (from t in HeroManager.Enemies
+                        where t.IsValidTarget(Q1.Range)
+                        let prediction = Q.GetPrediction(t)
+                        select new CPrediction.Position(t, prediction.UnitPosition)).Where(
+                            t => t.UnitPosition.Distance(Player.Position) < Q1.Range).ToList();
+                    if (heroPositions.Any())
+                    {
+                        var minions = MinionManager.GetMinions(
+                            Q1.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.None);
+
+                        if (minions.Any(m => m.IsMoving) && !heroPositions.Any(h => HasPassiveDebuff(h.Hero)))
+                        {
+                            return;
+                        }
+
+                        var outerMinions = minions.Where(m => m.Distance(Player) > Q.Range).ToList();
+                        var innerPositions = minions.Where(m => m.Distance(Player) < Q.Range).ToList();
+                        foreach (var minion in innerPositions)
+                        {
+                            var lMinion = minion;
+                            var coneBuff = new Geometry.Polygon.Sector(minion.Position,
+                                Player.Position.Extend(minion.Position, Player.Distance(minion) + Q.Range*0.5f),
+                                (float) (40*Math.PI/180), Q1.Range - Q.Range);
+
+                            var coneNormal = new Geometry.Polygon.Sector(minion.Position,
+                                Player.Position.Extend(minion.Position, Player.Distance(minion) + Q.Range*0.5f),
+                                (float) (60*Math.PI/180), Q1.Range - Q.Range);
+
+                            foreach (
+                                var enemy in
+                                    heroPositions.Where(
+                                        m => m.UnitPosition.Distance(lMinion.Position) < Q1.Range - Q.Range))
+                            {
+                                if (coneBuff.IsInside(enemy.Hero) && HasPassiveDebuff(enemy.Hero))
+                                {
+                                    Q.CastOnUnit(minion);
+                                    return;
+                                }
+
+                                if (coneNormal.IsInside(enemy.UnitPosition))
+                                {
+                                    var insideCone =
+                                        outerMinions.Where(m => coneNormal.IsInside(m.Position)).ToList();
+                                    if (!insideCone.Any() ||
+                                        enemy.UnitPosition.Distance(minion.Position) <
+                                        insideCone.Select(
+                                            m => m.Position.Distance(minion.Position) - m.BoundingRadius)
+                                            .DefaultIfEmpty(float.MaxValue)
+                                            .Min())
+                                    {
+                                        Q.CastOnUnit(minion);
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -83,7 +164,7 @@ namespace Marksman.Champions
             }
         }
 
-        public override void Game_OnUpdate(EventArgs args)
+        public override void GameOnUpdate(EventArgs args)
         {
             var ultCasting = Game.Time - UltiCastedTime < 0.2 || ObjectManager.Player.IsChannelingImportantSpell();
             Orbwalking.Attack = !ultCasting;
@@ -93,7 +174,8 @@ namespace Marksman.Champions
             {
                 if (ObjectManager.Player.HasBuff("Recall"))
                     return;
-                CastQ();
+                CastQ1();
+                //CastQ();
             }
 
             if (E.IsReady() && GetValue<KeyBind>("UseETH").Active)
@@ -115,7 +197,8 @@ namespace Marksman.Champions
 
                 if (Q.IsReady() && useQ)
                 {
-                    CastQ();
+                    CastQ1();
+                    //CastQ();
                 }
 
                 if (E.IsReady() && useE)
@@ -147,7 +230,7 @@ namespace Marksman.Champions
             }
         }
 
-        public override void ExecuteJungleClear()
+        public override void ExecuteJungle()
         {
             var jungleMobs = Marksman.Utils.Utils.GetMobs(Q.Range, Marksman.Utils.Utils.MobTypes.All);
 
@@ -253,7 +336,7 @@ namespace Marksman.Champions
             }
         }
 
-        public override void ExecuteLaneClear()
+        public override void ExecuteLane()
         {
             if (Q.IsReady())
             {
@@ -353,9 +436,9 @@ namespace Marksman.Champions
             return true;
         }
 
-        public override bool LaneClearMenu(Menu config)
+        public override bool LaneClearMenu(Menu menuLane)
         {
-            config.AddItem(
+            menuLane.AddItem(
                 new MenuItem("Lane.UseQ", Utils.Utils.Tab + "Use Q:").SetValue(new StringList(new[] {"Off", "On"})));
 
             string[] strW = new string[7];
@@ -366,7 +449,7 @@ namespace Marksman.Champions
                 {
                     strW[i] = "If need to AA more than >= " + i;
                 }
-                config.AddItem(new MenuItem("Lane.UseW", Utils.Utils.Tab + "Use W:").SetValue(new StringList(strW, 0)));
+                menuLane.AddItem(new MenuItem("Lane.UseW", Utils.Utils.Tab + "Use W:").SetValue(new StringList(strW, 0)));
             }
 
             string[] strE = new string[5];
@@ -377,14 +460,14 @@ namespace Marksman.Champions
                 {
                     strE[i] = "Minion Count >= " + i;
                 }
-                config.AddItem(new MenuItem("Lane.UseE", Utils.Utils.Tab + "Use E:").SetValue(new StringList(strE, 0)));
+                menuLane.AddItem(new MenuItem("Lane.UseE", Utils.Utils.Tab + "Use E:").SetValue(new StringList(strE, 0)));
             }
             return true;
         }
 
-        public override bool JungleClearMenu(Menu config)
+        public override bool JungleClearMenu(Menu menuJungle)
         {
-            config.AddItem(
+            menuJungle.AddItem(
                 new MenuItem("Jungle.UseQ", "Use Q").SetValue(new StringList(new[] {"Off", "On", "Just big Monsters"}, 2)));
 
             string[] strW = new string[8];
@@ -396,7 +479,7 @@ namespace Marksman.Champions
                 strW[i] = "If need to AA more than >= " + i;
             }
 
-            config.AddItem(new MenuItem("Jungle.UseW", "Use W").SetValue(new StringList(strW, 4)));
+            menuJungle.AddItem(new MenuItem("Jungle.UseW", "Use W").SetValue(new StringList(strW, 4)));
 
             string[] strE = new string[4];
             strE[0] = "Off";
@@ -406,7 +489,7 @@ namespace Marksman.Champions
                 strE[i] = "Mob Count >= " + i;
             }
 
-            config.AddItem(new MenuItem("Jungle.UseE", "Use E:").SetValue(new StringList(strE, 3)));
+            menuJungle.AddItem(new MenuItem("Jungle.UseE", "Use E:").SetValue(new StringList(strE, 3)));
             return true;
         }
 

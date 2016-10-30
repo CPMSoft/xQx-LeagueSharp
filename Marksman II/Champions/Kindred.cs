@@ -6,9 +6,12 @@ using System.Drawing;
 using System.Linq;
 using LeagueSharp;
 using LeagueSharp.Common;
+using Marksman.Common;
 using Marksman.Orb;
 using Marksman.Utils;
+using SharpDX;
 using SharpDX.Direct3D9;
+using Color = System.Drawing.Color;
 using Font = SharpDX.Direct3D9.Font;
 using Orbwalking = Marksman.Orb.Orbwalking;
 
@@ -20,50 +23,58 @@ namespace Marksman.Champions
 
     using Utils = LeagueSharp.Common.Utils;
 
-    internal interface IKindred
+    internal class KindredUltimate
     {
-        void Orbwalking_AfterAttack(AttackableUnit unit, AttackableUnit target);
-        void Drawing_OnDraw(EventArgs args);
-        void Game_OnUpdate(EventArgs args);
-        bool ComboMenu(Menu config);
-        bool HarassMenu(Menu config);
-        bool MiscMenu(Menu config);
-        bool DrawingMenu(Menu config);
-        bool LaneClearMenu(Menu config);
-        //bool JungleClearMenu(Menu config);
+        public GameObject Object { get; set; }
+        public Vector3 Position { get; set; }
+        public float StartTime { get; set; }
+        public float EndTime { get; set; }
     }
 
-    internal class Kindred : Champion, IKindred
+    internal class Kindred : Champion
     {
         public static Spell Q;
         public static Spell E;
         public static Spell W;
         public static Spell R;
         public static Obj_AI_Hero KindredECharge;
-        public static List<DangerousSpells> DangerousList = new List<DangerousSpells>();
+
+        public static KindredUltimate KindredUltimate = new KindredUltimate();
 
         public Kindred()
         {
             Q = new Spell(SpellSlot.Q, 375);
-            W = new Spell(SpellSlot.W, 900);
+            W = new Spell(SpellSlot.W, 700);
             E = new Spell(SpellSlot.E, 740);
             R = new Spell(SpellSlot.R, 1100);
             R.SetSkillshot(1f, 160f, 2000f, false, SkillshotType.SkillshotCircle);
 
             Obj_AI_Base.OnProcessSpellCast += Obj_AI_Hero_OnProcessSpellCast;
 
-            DangerousList.Add(new DangerousSpells("darius", SpellSlot.R));
-            DangerousList.Add(new DangerousSpells("garen", SpellSlot.R));
-            DangerousList.Add(new DangerousSpells("leesin", SpellSlot.R));
-            DangerousList.Add(new DangerousSpells("nautilius", SpellSlot.R));
-            DangerousList.Add(new DangerousSpells("syndra", SpellSlot.R));
-            DangerousList.Add(new DangerousSpells("warwick", SpellSlot.R));
-            DangerousList.Add(new DangerousSpells("zed", SpellSlot.R));
-            DangerousList.Add(new DangerousSpells("chogath", SpellSlot.R));
 
-            Marksman.Utils.Utils.PrintMessage("Kindred loaded.");
+
+            Marksman.Utils.Utils.PrintMessage("Kindred");
         }
 
+        public override void Obj_AI_Base_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
+        {
+            if (!(GetValue<bool>("Misc.Q.AntiMelee") && Q.IsReady()))
+                return;
+
+            if (args.Target != null && args.Target.IsMe && sender.Type == GameObjectType.obj_AI_Hero && sender.IsEnemy && sender.IsMelee && args.SData.IsAutoAttack())
+                Q.Cast(ObjectManager.Player.Position.Extend(sender.Position, -Q.Range));
+        }
+
+        public override void AntiGapcloser_OnEnemyGapcloser(ActiveGapcloser gapcloser)
+        {
+            if (!(GetValue<bool>("Misc.Q.Antigapcloser") && Q.IsReady())) return;
+
+            if (!(gapcloser.End.Distance(ObjectManager.Player.Position) <= 200)) return;
+
+            if (gapcloser.Sender.IsValidTarget())
+                Q.Cast(ObjectManager.Player.Position.Extend(gapcloser.Sender.Position, -Q.Range));
+        }
+		
         public override void Obj_AI_Base_OnBuffAdd(Obj_AI_Base sender, Obj_AI_BaseBuffAddEventArgs args)
         {
             if (args.Buff.Name.ToLower() == "kindredecharge" && !sender.IsMe)
@@ -82,10 +93,23 @@ namespace Marksman.Champions
 
         public override void OnCreateObject(GameObject sender, EventArgs args)
         {
+            if (sender.Name.Equals("Kindred_Base_R_AOE.troy", StringComparison.InvariantCultureIgnoreCase) || sender.Name.Contains("Kindred_Base_R_NoDeath_Buff"))
+            {
+                KindredUltimate.Object = sender;
+                KindredUltimate.Position = sender.Position;
+                KindredUltimate.StartTime = Environment.TickCount;
+                KindredUltimate.EndTime = Environment.TickCount + 5000;
+            }
+            //Kindred_Base_R_AOE.troy
+            //Kindred_Base_R_NoDeath_Buff.troy
         }
 
         public override void OnDeleteObject(GameObject sender, EventArgs args)
         {
+            if (sender.Name.Equals("Kindred_Base_R_AOE.troy", StringComparison.InvariantCultureIgnoreCase) || sender.Name.Contains("Kindred_Base_R_NoDeath_Buff"))
+            {
+                KindredUltimate.Object = null;
+            }
         }
 
         public override void Orbwalking_AfterAttack(AttackableUnit unit, AttackableUnit target)
@@ -115,8 +139,12 @@ namespace Marksman.Champions
             }
         }
 
+		
         public void Obj_AI_Hero_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
+            //Kindred_Base_R_AOE.troy
+            //Kindred_Base_R_NoDeath_Buff.troy
+            return;
             if (!R.IsReady())
             {
                 return;
@@ -132,21 +160,35 @@ namespace Marksman.Champions
                 return;
             }
 
-            if (R.IsReady())
-            {
-                if (sender.IsEnemy && sender is Obj_AI_Hero && args.Target.IsMe)
-                {
-                    foreach (
-                        var c in
-                            DangerousList.Where(c => ((Obj_AI_Hero) sender).ChampionName.ToLower() == c.ChampionName)
-                                .Where(c => args.Slot == c.SpellSlot))
-                        //.Where(c => args.SData.Name == ((Obj_AI_Hero)sender).GetSpell(c.SpellSlot).Name))
-                    {
-                        R.Cast(ObjectManager.Player.Position);
-                    }
-                }
+            //if (R.IsReady())
+            //{
+            //    if (sender.IsEnemy && sender is Obj_AI_Hero && args.Target.IsMe)
+            //    {
+            //        foreach (
+            //            var c in
+            //                DangerousList.Where(c => ((Obj_AI_Hero) sender).ChampionName.ToLower() == c.ChampionName)
+            //                    .Where(c => args.Slot == c.SpellSlot))
+            //            //.Where(c => args.SData.Name == ((Obj_AI_Hero)sender).GetSpell(c.SpellSlot).Name))
+            //        {
+            //            R.Cast(ObjectManager.Player.Position);
+            //        }
+            //    }
 
-            }
+            //}
+						
+			//TODO: Find kindred ulti object and jump in with Q
+			
+			if (sender != null)
+				if (args.Target != null)
+					if (args.Target.IsMe)
+						if (sender.Type == GameObjectType.obj_AI_Hero)
+							if (sender.IsEnemy)
+								if (sender.IsMelee)
+									if (args.SData.IsAutoAttack())
+										//if (MenuProvider.Champion.Misc.GetBoolValue("Use Anti-Melee (Q)"))
+											if (Q.IsReady())
+												Q.Cast(ObjectManager.Player.Position.Extend(sender.Position, -Q.Range));
+
 
             if (R.IsReady())
             {
@@ -161,15 +203,14 @@ namespace Marksman.Champions
                     R.Cast(ObjectManager.Player.Position);
                 }
                 
-                if (Program.Config.Item("UserRC").GetValue<bool>() &&
+                if (Program.Config.Item("UseRC").GetValue<bool>() &&
                     ObjectManager.Player.Health < ObjectManager.Player.MaxHealth * .2)
                 {
                     if (!sender.IsMe && sender.IsEnemy && R.IsReady() && args.Target.IsMe) // for minions attack
                     {
                         R.Cast(ObjectManager.Player.Position);
                     }
-                    else if (!sender.IsMe && sender.IsEnemy && (sender is Obj_AI_Hero || sender is Obj_AI_Turret) &&
-                             args.Target.IsMe && R.IsReady())
+                    else if (!sender.IsMe && sender.IsEnemy && (sender is Obj_AI_Hero || sender is Obj_AI_Turret) && args.Target.IsMe && R.IsReady())
                     {
                         R.Cast(ObjectManager.Player.Position);
                     }
@@ -190,7 +231,7 @@ namespace Marksman.Champions
             }
         }
 
-        public override void Game_OnUpdate(EventArgs args)
+        public override void GameOnUpdate(EventArgs args)
         {
             if (R.IsReady())
             {
@@ -227,19 +268,28 @@ namespace Marksman.Champions
             {
                 if (t.IsValidTarget(Q.Range + Orbwalking.GetRealAutoAttackRange(null) + 65) && !t.HasKindredUltiBuff())
                 {
-                    if (Q.IsReady())
+                    if (GetValue<StringList>("Combo.Q.Use").SelectedIndex != 0 && Q.IsReady())
                     {
-                        Q.Cast(Game.CursorPos);
-                    }
+                        if (GetValue<StringList>("Combo.Q.Use").SelectedIndex == 1)
+                        {
+                            var x = CommonUtils.GetDashPosition(E, t, 400);
+                            Q.Cast(x);
+                        }
 
-                    if (E.IsReady() && t.IsValidTarget(E.Range))
+                        if (GetValue<StringList>("Combo.Q.Use").SelectedIndex == 2)
+                        {
+                            Q.Cast(Game.CursorPos);                        }
+
+                        }
+
+                    if (GetValue<bool>("Combo.E.Use") && E.IsReady() && t.IsValidTarget(E.Range))
                     {
                         E.CastOnUnit(t);
                     }
 
-                    if (W.IsReady() && t.IsValidTarget(W.Range))
+                    if (GetValue<bool>("Combo.W.Use") && W.IsReady() && t.IsValidTarget(W.Range / 2))
                     {
-                        W.Cast();
+                        W.Cast(t.Position);
                     }
                 }
             }
@@ -247,47 +297,43 @@ namespace Marksman.Champions
 
         public override bool ComboMenu(Menu config)
         {
-            config.AddItem(new MenuItem("UseQC" + Id, "Use Q").SetValue(true));
-            config.AddItem(new MenuItem("UseWC" + Id, "Use W").SetValue(true));
-            config.AddItem(new MenuItem("UseEC" + Id, "Use E").SetValue(true));
-            config.AddItem(new MenuItem("UseRC" + Id, "Use R").SetValue(true));
+            config.AddItem(new MenuItem("Combo.Q.Use" + Id, "Q:").SetValue(new StringList(new []{"Off", "Smart", "Cursor Position"}, 1))).SetFontStyle(FontStyle.Regular, Q.MenuColor());
+            config.AddItem(new MenuItem("Combo.W.Use" + Id, "W:").SetValue(true)).SetFontStyle(FontStyle.Regular, W.MenuColor());
+            config.AddItem(new MenuItem("Combo.E.Use" + Id, "E:").SetValue(true)).SetFontStyle(FontStyle.Regular, E.MenuColor());
+            config.AddItem(new MenuItem("Combo.R.Use" + Id, "R:").SetValue(true)).SetFontStyle(FontStyle.Regular, R.MenuColor());
             return true;
         }
 
         public override bool HarassMenu(Menu config)
         {
-            config.AddItem(new MenuItem("UseQH" + Id, "Q").SetValue(true));
-            config.AddItem(new MenuItem("UseWH" + Id, "W").SetValue(true));
-            config.AddItem(
-                new MenuItem("UseEH" + Id, "Use E").SetValue(new KeyBind("H".ToCharArray()[0], KeyBindType.Toggle)));
+            config.AddItem(new MenuItem("UseQH" + Id, "Q:").SetValue(false));
+            config.AddItem(new MenuItem("UseWH" + Id, "W:").SetValue(false));
+            config.AddItem(new MenuItem("UseEH" + Id, "E:").SetValue(false));
             config.AddItem(
                 new MenuItem("UseETH", "E (Toggle)").SetValue(new KeyBind("H".ToCharArray()[0], KeyBindType.Toggle)));
             return true;
         }
 
-        public override bool LaneClearMenu(Menu config)
+        public override bool LaneClearMenu(Menu menuLane)
         {
-            config.AddItem(new MenuItem("UseQL" + Id, "Use Q").SetValue(true)).ValueChanged +=
+            menuLane.AddItem(new MenuItem("UseQL" + Id, "Use Q").SetValue(true)).ValueChanged +=
                 delegate (object sender, OnValueChangeEventArgs args)
                 {
-                    config.Item("UseQLM").Show(args.GetNewValue<bool>());
+                    menuLane.Item("UseQLM").Show(args.GetNewValue<bool>());
                     Program.ChampionClass.Config.Item("LaneMinMana").Show(args.GetNewValue<bool>());
                 };
-            config.AddItem(new MenuItem("UseQLM", "Min. Minion:").SetValue(new Slider(2, 1, 3)));
-            config.AddItem(new MenuItem("UseWL", "Use W").SetValue(false));
+
+            menuLane.AddItem(new MenuItem("UseQLM", "Min. Minion:").SetValue(new Slider(2, 1, 3)));
+            menuLane.AddItem(new MenuItem("UseWL", "Use W").SetValue(false));
             return true;
         }
 
         public override bool DrawingMenu(Menu config)
         {
-            config.AddItem(
-                new MenuItem("DrawQ" + Id, "Q range").SetValue(new StringList(new[] { "Off", "Q Range", "Q + AA Range" }, 2)));
-            config.AddItem(
-                new MenuItem("DrawW" + Id, "W range").SetValue(new Circle(false, Color.FromArgb(100, 255, 255, 255))));
-            config.AddItem(
-                new MenuItem("DrawE" + Id, "E range").SetValue(new Circle(false, Color.FromArgb(100, 255, 255, 255))));
-            config.AddItem(
-                new MenuItem("DrawR" + Id, "R range").SetValue(new Circle(false, Color.FromArgb(100, 255, 255, 255))));
+            config.AddItem(new MenuItem("DrawQ" + Id, "Q range").SetValue(new StringList(new[] { "Off", "Q Range", "Q + AA Range" }, 2)));
+            config.AddItem(new MenuItem("DrawW" + Id, "W range").SetValue(new Circle(false, Color.FromArgb(100, 255, 255, 255))));
+            config.AddItem(new MenuItem("DrawE" + Id, "E range").SetValue(new Circle(false, Color.FromArgb(100, 255, 255, 255))));
+            config.AddItem(new MenuItem("DrawR" + Id, "R range").SetValue(new Circle(false, Color.FromArgb(100, 255, 255, 255))));
             var dmgAfterComboItem = new MenuItem("DamageAfterCombo", "Damage After Combo").SetValue(true);
 
             config.AddItem(dmgAfterComboItem);
@@ -297,10 +343,24 @@ namespace Marksman.Champions
 
         public override bool MiscMenu(Menu config)
         {
-            return false;
+            config.AddItem(new MenuItem("Misc.Q.Antigapcloser" + Id, "Q: Antigapcloser").SetValue(true));
+            config.AddItem(new MenuItem("Misc.Q.AntiMelee" + Id, "Q: Anti-Melee").SetValue(true));
+            
+            return true;
         }
 
-        public override void ExecuteLaneClear()
+        public override void PermaActive()
+        {
+            //KindredRNoDeathBuff
+            if (KindredUltimate != null && KindredUltimate.EndTime > Environment.TickCount + 300 && !ObjectManager.Player.HasBuff("KindredRNoDeathBuff") && Q.IsReady())
+            {
+                Q.Cast(KindredUltimate.Position);
+            }
+
+            base.PermaActive();
+        }
+
+        public override void ExecuteLane()
         {
             var useQ = Program.Config.Item("UseQL").GetValue<StringList>().SelectedIndex;
 
@@ -336,18 +396,17 @@ namespace Marksman.Champions
             }
         }
 
-        public override bool JungleClearMenu(Menu config)
+        public override bool JungleClearMenu(Menu menuJungle)
         {
-            config.AddItem(new MenuItem("UseQJ" + Id, "Use Q").SetValue(new StringList(new[] { "Off", "On", "Just big Monsters" }, 1)));
-            config.AddItem(new MenuItem("UseWJ" + Id, "Use W").SetValue(new StringList(new[] { "Off", "On", "Just big Monsters" }, 1)));
-            config.AddItem(new MenuItem("UseEJ" + Id, "Use E").SetValue(new StringList(new[] { "Off", "On", "Just big Monsters" }, 1)));
+            menuJungle.AddItem(new MenuItem("UseQJ" + Id, "Use Q").SetValue(new StringList(new[] { "Off", "On", "Just big Monsters" }, 1)));
+            menuJungle.AddItem(new MenuItem("UseWJ" + Id, "Use W").SetValue(new StringList(new[] { "Off", "On", "Just big Monsters" }, 1)));
+            menuJungle.AddItem(new MenuItem("UseEJ" + Id, "Use E").SetValue(new StringList(new[] { "Off", "On", "Just big Monsters" }, 1)));
 
             return true;
         }
 
-        public override void ExecuteJungleClear()
+        public override void ExecuteJungle()
         {
-            Game.PrintChat("laksdjlasdjlaskd");
             var jungleMobs = Marksman.Utils.Utils.GetMobs(Q.Range + Orbwalking.GetRealAutoAttackRange(null) + 65,
                 Marksman.Utils.Utils.MobTypes.All);
 
@@ -365,14 +424,10 @@ namespace Marksman.Champions
                         }
                     case 2:
                         {
-                            jungleMobs = Marksman.Utils.Utils.GetMobs(
-                                Q.Range + Orbwalking.GetRealAutoAttackRange(null) + 65,
-                                Marksman.Utils.Utils.MobTypes.BigBoys);
+                            jungleMobs = Marksman.Utils.Utils.GetMobs(Q.Range + Orbwalking.GetRealAutoAttackRange(null) + 65,Marksman.Utils.Utils.MobTypes.BigBoys);
                             if (jungleMobs != null)
                             {
-                                Q.Cast(jungleMobs.IsValidTarget(Orbwalking.GetRealAutoAttackRange(null) + 65)
-                                    ? Game.CursorPos
-                                    : jungleMobs.Position);
+                                Q.Cast(jungleMobs.IsValidTarget(Orbwalking.GetRealAutoAttackRange(null) + 65) ? Game.CursorPos : jungleMobs.Position);
                             }
                             break;
                         }

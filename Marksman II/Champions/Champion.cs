@@ -15,8 +15,10 @@ namespace Marksman.Champions
         public bool ComboActive;
         public bool HarassActive;
         public bool LaneClearActive;
+        public bool LastHitActive;
         public bool JungleClearActive;
-        public Menu Config;
+
+        public Menu Config, MenuLane, MenuJungle;
         
         public string Id = "";
         public Orbwalking.Orbwalker Orbwalker;
@@ -37,12 +39,12 @@ namespace Marksman.Champions
             return false;
         }
 
-        public virtual bool JungleClearMenu(Menu config)
+        public virtual bool JungleClearMenu(Menu menuJungle)
         {
             return false;
         }
 
-        public virtual bool LaneClearMenu(Menu config)
+        public virtual bool LaneClearMenu(Menu menuLane)
         {
             return false;
         }
@@ -73,41 +75,44 @@ namespace Marksman.Champions
             }
         }
 
-        
-        public virtual void Game_OnUpdate(EventArgs args)
+        public virtual void GameOnUpdate(EventArgs args)
         {
+            return;
             PermaActive();
+            if (ComboActive)
+            {
+                ExecuteCombo();
+            }
 
             if (JungleClearActive)
             {
-                ExecuteJungleClear();
+                ExecuteJungle();
             }
             
             if (LaneClearActive)
             {
-                
-                ExecuteLaneClear();
+                ExecuteLane();
             }
         }
 
         public virtual void ExecuteCombo() { }
         public virtual void ExecuteHarass() { }
         public virtual void ExecuteFlee() { }
-        public virtual void ExecuteLaneClear() { }
-        public virtual void ExecuteJungleClear() { }
+        public virtual void ExecuteLane() { }
+        public virtual void ExecuteJungle() { }
         public virtual void PermaActive() { }
 
         public virtual void DrawingOnEndScene(EventArgs args)
         {
-                    if (Drawing.Direct3DDevice == null || Drawing.Direct3DDevice.IsDisposed)
-            {
-                return;
-            }
-            if (ObjectManager.Player.IsDead)
+            if (Drawing.Direct3DDevice == null || Drawing.Direct3DDevice.IsDisposed)
             {
                 return;
             }
 
+            if (ObjectManager.Player.IsDead)
+            {
+                return;
+            }
         }
 
         public virtual void Orbwalking_AfterAttack(AttackableUnit unit, AttackableUnit target) { }
@@ -121,6 +126,11 @@ namespace Marksman.Champions
 
         public virtual void Spellbook_OnCastSpell(Spellbook sender, SpellbookCastSpellEventArgs args) { }
         public virtual void Obj_AI_Base_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args) { }
+
+        public virtual void Obj_AI_Base_OnPlayAnimation(Obj_AI_Base sender, GameObjectPlayAnimationEventArgs eventArgs) { }
+        public virtual void AntiGapcloser_OnEnemyGapcloser(ActiveGapcloser args) { }
+
+        public virtual void Interrupter2_OnInterruptableTarget(Obj_AI_Hero sender, Interrupter2.InterruptableTargetEventArgs args) { }
 
 
     }

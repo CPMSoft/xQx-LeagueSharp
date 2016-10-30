@@ -18,22 +18,28 @@ namespace Marksman.Champions
 
     internal class DangerousSpells
     {
+        public string SpellName { get; private set; }
         public string ChampionName { get; private set; }
         public SpellSlot SpellSlot { get; private set; }
 
-        public DangerousSpells(string championName, SpellSlot spellSlot)
+        public DangerousSpells(string spellName, string championName, SpellSlot spellSlot)
         {
+            SpellName = spellName;
             ChampionName = championName;
             SpellSlot = spellSlot;
         }
     }
+
+    
 
     internal class Sivir : Champion
     {
         public static Spell Q;
         public Spell E;
         public Spell W;
-        public static List<DangerousSpells> DangerousList = new List<DangerousSpells>();
+        
+
+        public static List<DangerousSpells> DangerousTargetedSpells = new List<DangerousSpells>();
 
         public Sivir()
         {
@@ -46,18 +52,33 @@ namespace Marksman.Champions
 
             Obj_AI_Base.OnProcessSpellCast += Obj_AI_Hero_OnProcessSpellCast;
 
-            DangerousList.Add(new DangerousSpells("darius", SpellSlot.R));
-            DangerousList.Add(new DangerousSpells("fiddlesticks", SpellSlot.Q));
-            DangerousList.Add(new DangerousSpells("garen", SpellSlot.R));
-            DangerousList.Add(new DangerousSpells("leesin", SpellSlot.R));
-            DangerousList.Add(new DangerousSpells("nautilius", SpellSlot.R));
-            DangerousList.Add(new DangerousSpells("skarner", SpellSlot.R));
-            DangerousList.Add(new DangerousSpells("syndra", SpellSlot.R));
-            DangerousList.Add(new DangerousSpells("warwick", SpellSlot.R));
-            DangerousList.Add(new DangerousSpells("zed", SpellSlot.R));
-            DangerousList.Add(new DangerousSpells("tristana", SpellSlot.R));
+            DangerousTargetedSpells.Add(new DangerousSpells("dariusR", "darius", SpellSlot.R));
+            DangerousTargetedSpells.Add(new DangerousSpells("viR", "vi", SpellSlot.R));
+            DangerousTargetedSpells.Add(new DangerousSpells("veigarR", "veigar", SpellSlot.R));
+            DangerousTargetedSpells.Add(new DangerousSpells("fiddlesticksQ", "fiddlesticks", SpellSlot.Q));
+            DangerousTargetedSpells.Add(new DangerousSpells("chogathR", "chogath", SpellSlot.R));
+            DangerousTargetedSpells.Add(new DangerousSpells("garenR", "garen", SpellSlot.R));
+            DangerousTargetedSpells.Add(new DangerousSpells("leesinR", "leesin", SpellSlot.R));
+            DangerousTargetedSpells.Add(new DangerousSpells("nautiliusR", "nautilius", SpellSlot.R));
+            DangerousTargetedSpells.Add(new DangerousSpells("skarnerR", "skarner", SpellSlot.R));
+            DangerousTargetedSpells.Add(new DangerousSpells("syndraR", "syndra", SpellSlot.R));
+            DangerousTargetedSpells.Add(new DangerousSpells("warwickR", "warwick", SpellSlot.R));
+            DangerousTargetedSpells.Add(new DangerousSpells("zedR", "zed", SpellSlot.R));
+            DangerousTargetedSpells.Add(new DangerousSpells("tristanaR", "tristana", SpellSlot.R));
+            DangerousTargetedSpells.Add(new DangerousSpells("malzaharR", "malzahar", SpellSlot.R));
+            DangerousTargetedSpells.Add(new DangerousSpells("urgotR", "urgot", SpellSlot.R));
+            DangerousTargetedSpells.Add(new DangerousSpells("trundleR", "trundle", SpellSlot.R));
 
-            Utils.PrintMessage("Sivir loaded.");
+            DangerousTargetedSpells.Add(new DangerousSpells("maokaiW", "maokai", SpellSlot.W));
+            DangerousTargetedSpells.Add(new DangerousSpells("alistarQ", "alistar", SpellSlot.W));
+            DangerousTargetedSpells.Add(new DangerousSpells("nasusW", "nasus", SpellSlot.W));
+            DangerousTargetedSpells.Add(new DangerousSpells("pantheonW", "pantheon", SpellSlot.W));
+            DangerousTargetedSpells.Add(new DangerousSpells("ryzeW", "ryze", SpellSlot.W));
+            DangerousTargetedSpells.Add(new DangerousSpells("rammusE", "rammus", SpellSlot.E));
+            DangerousTargetedSpells.Add(new DangerousSpells("singedW", "singed", SpellSlot.W));
+            DangerousTargetedSpells.Add(new DangerousSpells("kayleQ", "kayle", SpellSlot.Q));
+
+            Utils.PrintMessage("Sivir");
         }
 
         public override void Orbwalking_BeforeAttack(Orbwalking.BeforeAttackEventArgs args)
@@ -85,38 +106,93 @@ namespace Marksman.Champions
 
         public void Obj_AI_Hero_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
-            if (!E.IsReady() || !(sender is Obj_AI_Hero) || !sender.Target.IsMe)
+            if (sender.Type != GameObjectType.obj_AI_Hero)
             {
                 return;
             }
 
-            if (sender.IsEnemy && args.Target.IsMe && E.IsReady())
+            if (!sender.IsValid || sender.Team == ObjectManager.Player.Team)
             {
-                foreach (
-                    var c in
-                        DangerousList.Where(c => ((Obj_AI_Hero) sender).ChampionName.ToLower() == c.ChampionName)
-                            .Where(c => args.SData.Name == ((Obj_AI_Hero) sender).GetSpell(c.SpellSlot).Name))
-                {
-                    E.Cast();
-                }
+                return;
             }
-            return;
-            if (((Obj_AI_Hero)sender).ChampionName.ToLower() == "vayne" && args.SData.Name == ((Obj_AI_Hero)sender).GetSpell(SpellSlot.E).Name)
+
+            if (W.IsReady())
             {
-                for (var i = 1; i < 8; i++)
+                if (sender.IsEnemy && sender is Obj_AI_Hero && args.Target.IsMe)
                 {
-                    var championBehind = ObjectManager.Player.Position + Vector3.Normalize(((Obj_AI_Hero)sender).ServerPosition - ObjectManager.Player.Position) * (-i * 50);
-                    if (championBehind.IsWall())
+                    foreach (
+                        var c in
+                            DangerousTargetedSpells.Where(c => ((Obj_AI_Hero)sender).ChampionName.ToLower() == c.ChampionName)
+                                .Where(c => args.Slot == c.SpellSlot))
+                    //.Where(c => args.SData.Name == ((Obj_AI_Hero)sender).GetSpell(c.SpellSlot).Name))
                     {
-                        E.Cast();
+                        W.Cast();
                     }
+                }
+
+                var enemy = (Obj_AI_Hero)sender;
+                if ((enemy.CharData.BaseSkinName.ToLower() == "vayne" || enemy.CharData.BaseSkinName.ToLower() == "poppy") && args.Slot == SpellSlot.E &&
+                    args.Target.IsMe)
+                {
+                    for (var i = 1; i < 8; i++)
+                    {
+                        var myBehind = ObjectManager.Player.Position +
+                                       Vector3.Normalize(enemy.ServerPosition -
+                                                         ObjectManager.Player.Position) * (-i * 50);
+                        if (myBehind.IsWall())
+                        {
+                            W.Cast();
+                        }
+                    }
+                }
+
+                if (enemy.CharData.BaseSkinName.ToLower() == "riven" && args.Slot == SpellSlot.W && enemy.Position.Distance(ObjectManager.Player.Position) < Orbwalking.GetRealAutoAttackRange(null) + 150)
+                {
+                    W.Cast();
+                    DodgeMessage("Riven's W");
+                }
+
+
+                if (enemy.CharData.BaseSkinName.ToLower() == "diana" && args.Slot == SpellSlot.E && enemy.Position.Distance(ObjectManager.Player.Position) <= 350)
+                {
+                    W.Cast();
+                    DodgeMessage("Diana E");
+                }
+
+                if (enemy.CharData.BaseSkinName.ToLower() == "MasterYi" && args.Slot == SpellSlot.E && enemy.Health < ObjectManager.Player.Health && args.Target.IsMe)
+                {
+                    W.Cast();
+                    DodgeMessage("MasterYi E");
+                }
+
+                if (enemy.CharData.BaseSkinName.ToLower() == "darius" && args.Slot == SpellSlot.E && enemy.Position.Distance(ObjectManager.Player.Position) <= 550 && enemy.Level <= 5)
+                {
+                    W.Cast();
+                    DodgeMessage("Darius E");
+                }
+
+                if (enemy.CharData.BaseSkinName.ToLower() == "blitzcrank" && args.Slot == SpellSlot.R && enemy.Position.Distance(ObjectManager.Player.Position) < Orbwalking.GetRealAutoAttackRange(null) + 300)
+                {
+                    W.Cast();
+                    DodgeMessage("Blitzcrank's R");
+                }
+                if (enemy.CharData.BaseSkinName.ToLower() == "lissandra" && args.Slot == SpellSlot.R && enemy.Position.Distance(ObjectManager.Player.Position) < 500)
+                {
+                    W.Cast();
+                    DodgeMessage("Lissandra's R");
                 }
             }
         }
 
-        public override void Game_OnUpdate(EventArgs args)
+        private static void DodgeMessage(string text)
         {
-            if (GetValue<bool>("AutoQ") || GetValue<bool>("UseQ"))
+            Game.PrintChat("<font color='#ff3232'>Dodged: </font><font color='#d4d4d4'><font color='#FFFFFF'>" + text + "</font>");
+        }
+
+
+        public override void GameOnUpdate(EventArgs args)
+        {
+            if (GetValue<bool>("AutoQ"))
             {
                 var t = TargetSelector.GetTarget(Q.Range, TargetSelector.DamageType.Physical);
                 if (Q.IsReady() && t.IsValidTarget())
@@ -147,7 +223,7 @@ namespace Marksman.Champions
             }
         }
 
-        public override void ExecuteJungleClear()
+        public override void ExecuteJungle()
         {
             var jungleMobs = Utils.GetMobs(Q.Range, Marksman.Utils.Utils.MobTypes.All);
 
@@ -208,7 +284,7 @@ namespace Marksman.Champions
             }
         }
 
-        public override void ExecuteLaneClear()
+        public override void ExecuteLane()
         {
             var qJ = Program.Config.Item("UseQ.Lane").GetValue<StringList>().SelectedIndex;
             if (qJ != 0)
@@ -247,7 +323,6 @@ namespace Marksman.Champions
             var t = target as Obj_AI_Hero;
             if (t != null && (ComboActive || HarassActive) && unit.IsMe)
             {
-                var useQ = GetValue<bool>("UseQ" + (ComboActive ? "C" : "H"));
                 var useW = GetValue<bool>("UseWC");
 
                 if (W.IsReady() && useW)
@@ -297,7 +372,7 @@ namespace Marksman.Champions
             return true;
         }
 
-        public override bool LaneClearMenu(Menu config)
+        public override bool LaneClearMenu(Menu menuLane)
         {
             string[] strQ = new string[5];
             strQ[0] = "Off";
@@ -307,8 +382,8 @@ namespace Marksman.Champions
                 strQ[i] = "Minion Count >= " + i;
             }
 
-            config.AddItem(new MenuItem("UseQ.Lane", Utils.Tab + "Use Q:").SetValue(new StringList(strQ, 0)));
-            config.AddItem(new MenuItem("UseQR.Lane", Utils.Tab + "Use Q for out of AA Range").SetValue(true));
+            menuLane.AddItem(new MenuItem("UseQ.Lane", Utils.Tab + "Use Q:").SetValue(new StringList(strQ, 0)));
+            menuLane.AddItem(new MenuItem("UseQR.Lane", Utils.Tab + "Use Q for out of AA Range").SetValue(true));
 
 
             string[] strW = new string[5];
@@ -319,14 +394,14 @@ namespace Marksman.Champions
                 strW[i] = "Minion Count >= " + i;
             }
 
-            config.AddItem(new MenuItem("UseW.Lane", Utils.Tab + "Use W:").SetValue(new StringList(strW, 0)));
+            menuLane.AddItem(new MenuItem("UseW.Lane", Utils.Tab + "Use W:").SetValue(new StringList(strW, 0)));
 
             return true;
         }
 
-        public override bool JungleClearMenu(Menu config)
+        public override bool JungleClearMenu(Menu menuJungle)
         {
-            config.AddItem(
+            menuJungle.AddItem(
                 new MenuItem("UseQ.Jungle", "Use Q").SetValue(
                     new StringList(new[] {"Off", "On", "Just for big Monsters"}, 1)));
 
@@ -339,7 +414,7 @@ namespace Marksman.Champions
                 strW[i] = "If need to AA more than >= " + i;
             }
 
-            config.AddItem(new MenuItem("UseW.Jungle", "Use W").SetValue(new StringList(strW, 4)));
+            menuJungle.AddItem(new MenuItem("UseW.Jungle", "Use W").SetValue(new StringList(strW, 4)));
 
             return true;
         }

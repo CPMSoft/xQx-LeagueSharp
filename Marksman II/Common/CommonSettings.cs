@@ -25,14 +25,14 @@ namespace Marksman.Common
 
             MenuCastSettings = new Menu("Spell Cast:", "MenuSettings.CastDelay");
             {
-                string[] strQ = new string[1000/250];
+                string[] strQ = new string[1000 / 250];
                 for (float i = 250; i <= 1000; i += 250)
                 {
-                    strQ[(int) (i/250 - 1)] = (i/1000) + " sec. ";
+                    strQ[(int)(i / 250 - 1)] = (i / 1000) + " sec. ";
                 }
                 MenuCastSettings.AddItem(new MenuItem("Settings.SpellCast.VisibleDelay", "Cast Delay: Instatly Visible Enemy").SetValue(new StringList(strQ, 2))).SetTooltip("Exp: Rengar / Shaco / Wukong / Kha'Zix / Vayne / Enemy Ganker from the bush");
                 MenuCastSettings.AddItem(new MenuItem("Settings.SpellCast.Default", "Load Recommended Settings").SetValue(true)).SetFontStyle(FontStyle.Bold, SharpDX.Color.Wheat)
-                    .ValueChanged += (sender, args) =>
+                    .ValueChanged += (sender, args) => 
                     {
                         if (args.GetNewValue<bool>() == true)
                         {
@@ -63,12 +63,12 @@ namespace Marksman.Common
                 switch (ObjectManager.Player.ChampionName.ToLowerInvariant())
                 {
                     case "caitlyn":
-                    {
-                        //var caitlyn = new Caitlyn();
-                        //    foreach (var prop in caitlyn.GetType().GetProperties())
-                        //    {
-                        //        Game.PrintChat("{0}={1}", prop.Name, prop.GetValue(caitlyn, null));
-                        //    }
+                        {
+                            //var caitlyn = new Caitlyn();
+                            //    foreach (var prop in caitlyn.GetType().GetProperties())
+                            //    {
+                            //        Game.PrintChat("{0}={1}", prop.Name, prop.GetValue(caitlyn, null));
+                            //    }
                             //object x = MagicallyCreateInstance("Caitlyn");
                             //    foreach (var p in x.GetType().GetProperties())
                             //    {
@@ -82,9 +82,9 @@ namespace Marksman.Common
                             MenuSpellRanges.AddItem(eSpell);
 
                             break;
-                    }
+                        }
                 }
-          
+
                 MenuLocal.AddSubMenu(MenuSpellRanges);
             }
         }
@@ -127,7 +127,7 @@ namespace Marksman.Common
 
         public static HitChance GetHitchance(this Spell nSpell)
         {
-            HitChance[] hitChances = new[] { HitChance.Medium, HitChance.High, HitChance.VeryHigh};
+            HitChance[] hitChances = new[] { HitChance.Medium, HitChance.High, HitChance.VeryHigh };
             return hitChances[MenuHitchanceSettings.Item("MenuSettings.Hitchance." + nSpell.Slot).GetValue<StringList>().SelectedIndex];
         }
     }

@@ -20,7 +20,7 @@ namespace Marksman.Champions
 
         public Gnar()
         {
-            Utils.Utils.PrintMessage("Gnar loaded.");
+            Utils.Utils.PrintMessage("Gnar");
 
             Q = new Spell(SpellSlot.Q, 1100);
             Q.SetSkillshot(0.5f, 50f, 1200f, false, SkillshotType.SkillshotLine);
@@ -31,7 +31,7 @@ namespace Marksman.Champions
             E.SetSkillshot(0.5f, 50f, 1200f, false, SkillshotType.SkillshotCircle);
         }
 
-        public override void Game_OnUpdate(EventArgs args)
+        public override void GameOnUpdate(EventArgs args)
         {
             if (!Orbwalking.CanMove(100))
                 return;
@@ -105,11 +105,11 @@ namespace Marksman.Champions
             return true;
         }
 
-        public override bool LaneClearMenu(Menu config)
+        public override bool LaneClearMenu(Menu menuLane)
         {
             return true;
         }
-        public override bool JungleClearMenu(Menu config)
+        public override bool JungleClearMenu(Menu menuJungle)
         {
             return false;
         }

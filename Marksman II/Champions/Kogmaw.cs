@@ -25,7 +25,7 @@ namespace Marksman.Champions
 
         public Kogmaw()
         {
-            Utils.Utils.PrintMessage("KogMaw loaded.");
+            Utils.Utils.PrintMessage("KogMaw");
 
             Q = new Spell(SpellSlot.Q, 1175f);
             W = new Spell(SpellSlot.W, float.MaxValue);
@@ -128,7 +128,7 @@ namespace Marksman.Champions
                 R.Cast(nHitPosition);
         }
 
-        public override void Game_OnUpdate(EventArgs args)
+        public override void GameOnUpdate(EventArgs args)
         {
             //Game.PrintChat(ObjectManager.Player.BaseAbilityDamage.ToString() + " : " + ObjectManager.Player.BaseAttackDamage.ToString());
             UltiBuffStacks = GetUltimateBuffStacks();
@@ -306,7 +306,7 @@ namespace Marksman.Champions
             return true;
         }
 
-        public override void ExecuteLaneClear()
+        public override void ExecuteLane()
         {
             List<Obj_AI_Base> laneMinions;
 
@@ -428,7 +428,7 @@ namespace Marksman.Champions
             }
         }
 
-        public override void ExecuteJungleClear()
+        public override void ExecuteJungle()
         {
             Obj_AI_Base jungleMobs;
 
@@ -554,9 +554,9 @@ namespace Marksman.Champions
             }
         }
 
-        public override bool LaneClearMenu(Menu config)
+        public override bool LaneClearMenu(Menu menuLane)
         {
-            config.AddItem(new MenuItem("Lane.UseQ" + Id, "Q:").SetValue(new StringList(new[] {"Off", "Just For Out of AA Range", "Just Non Killable Minions", "Both"}, 3)));
+            menuLane.AddItem(new MenuItem("Lane.UseQ" + Id, "Q:").SetValue(new StringList(new[] {"Off", "Just For Out of AA Range", "Just Non Killable Minions", "Both"}, 3)));
 
             string[] strW = new string[5];
             {
@@ -566,7 +566,7 @@ namespace Marksman.Champions
                     var x = (i)*5;
                     strW[i] = "If need to AA more than >= " + x;
                 }
-                config.AddItem(new MenuItem("Lane.UseW" + Id, "W:").SetValue(new StringList(strW, 1)));
+                menuLane.AddItem(new MenuItem("Lane.UseW" + Id, "W:").SetValue(new StringList(strW, 1)));
             }
 
             string[] strE = new string[7];
@@ -577,7 +577,7 @@ namespace Marksman.Champions
                 strE[i] = "Minion Count >= " + i;
             }
 
-            config.AddItem(new MenuItem("Lane.UseE" + Id, "E:").SetValue(new StringList(strE, 3)))
+            menuLane.AddItem(new MenuItem("Lane.UseE" + Id, "E:").SetValue(new StringList(strE, 3)))
                 .SetFontStyle(FontStyle.Regular, SharpDX.Color.Aqua);
 
             string[] strR = new string[5];
@@ -589,9 +589,9 @@ namespace Marksman.Champions
                     strR[i] = "Minion Count >= " + i;
                 }
 
-                config.AddItem(new MenuItem("Lane.UseR" + Id, "R:").SetValue(new StringList(strR, 3)))
+                menuLane.AddItem(new MenuItem("Lane.UseR" + Id, "R:").SetValue(new StringList(strR, 3)))
                     .SetFontStyle(FontStyle.Regular, SharpDX.Color.Aqua);
-                config.AddItem(
+                menuLane.AddItem(
                     new MenuItem("Lane.UseRLim" + Id, Marksman.Utils.Utils.Tab + "R Limit:").SetValue(new Slider(3, 5, 1)))
                     .SetFontStyle(FontStyle.Regular, SharpDX.Color.Aqua);
             }
@@ -599,9 +599,9 @@ namespace Marksman.Champions
         }
 
 
-        public override bool JungleClearMenu(Menu config)
+        public override bool JungleClearMenu(Menu menuJungle)
         {
-            config.AddItem(
+            menuJungle.AddItem(
                 new MenuItem("Jungle.UseQ" + Id, "Q:").SetValue(new StringList(
                     new[] {"Off", "On", "Just big Monsters"}, 2)));
 
@@ -615,10 +615,10 @@ namespace Marksman.Champions
                     var x = (i - 1)*5;
                     strW[i] = "If need to AA more than >= " + x;
                 }
-                config.AddItem(new MenuItem("Jungle.UseW" + Id, "W:").SetValue(new StringList(strW, 1)));
+                menuJungle.AddItem(new MenuItem("Jungle.UseW" + Id, "W:").SetValue(new StringList(strW, 1)));
             }
 
-            config.AddItem(
+            menuJungle.AddItem(
                 new MenuItem("Jungle.UseE" + Id, "E:").SetValue(new StringList(
                     new[] {"Off", "On", "Just big Monsters"}, 2)));
 
@@ -630,9 +630,9 @@ namespace Marksman.Champions
                 strR[i] = "Mob Count >= " + i;
             }
 
-            config.AddItem(new MenuItem("Jungle.UseR" + Id, "R:").SetValue(new StringList(strR, 3)))
+            menuJungle.AddItem(new MenuItem("Jungle.UseR" + Id, "R:").SetValue(new StringList(strR, 3)))
                 .SetFontStyle(FontStyle.Regular, SharpDX.Color.Aqua);
-            config.AddItem(
+            menuJungle.AddItem(
                 new MenuItem("Jungle.UseRLim" + Id, Marksman.Utils.Utils.Tab + "R Limit:").SetValue(new Slider(3, 5, 1)))
                 .SetFontStyle(FontStyle.Regular, SharpDX.Color.Aqua);
 

@@ -20,7 +20,7 @@ namespace Marksman
 {
     internal class Program
     {
-        public static Menu Config;
+        public static Menu Config, MenuLane, MenuJungle;
 
         public static Menu OrbWalking;
 
@@ -110,6 +110,9 @@ namespace Marksman
                 case "gnar":
                     ChampionClass = new Gnar();
                     break;
+                case "jhin":
+                    ChampionClass = new Jhin();
+                    break;
                 case "jinx":
                     ChampionClass = new Jinx();
                     break;
@@ -152,78 +155,49 @@ namespace Marksman
                 case "varus":
                     ChampionClass = new Varus();
                     break;
+                default:
+                    Game.PrintChat(ObjectManager.Player.CharData.BaseSkinName + " Doesn't support from Marksman!");
+                    break;
             }
             //Config.DisplayName = "Marksman Lite | " + CultureInfo.CurrentCulture.TextInfo.ToTitleCase(championName);
             Config.DisplayName = "Marksman II - " + ObjectManager.Player.ChampionName;
 
             ChampionClass.Id = ObjectManager.Player.CharData.BaseSkinName;
             ChampionClass.Config = Config;
-
+            ChampionClass.MenuLane = MenuLane;
+            ChampionClass.MenuJungle = MenuJungle;
 
             MenuExtraTools = new Menu("Marksman II - Tools", "ExtraTools", true).SetFontStyle(FontStyle.Regular,
                 SharpDX.Color.GreenYellow);
             {
                 var nMenuExtraToolsPackets = new Menu("Available Tools", "MenuExtraTools.Available");
-                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.Orbwalker", "Orbwalker:"))
-                    .SetValue(
-                        new StringList(new[] {"LeagueSharp Common", "Marksman Orbwalker (With Attack Speed Limiter)"}))
-                    .SetFontStyle(FontStyle.Regular, SharpDX.Color.Gray);
-                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.Prediction", "Prediction:"))
-                    .SetValue(new StringList(new[] {"LeagueSharp Common", "SPrediction (Synx)"}))
-                    .SetFontStyle(FontStyle.Regular, SharpDX.Color.Gray);
+                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.Orbwalker", "Orbwalker:")).SetValue(new StringList(new[] {"LeagueSharp Common", "Marksman Orbwalker (With Attack Speed Limiter)"})).SetFontStyle(FontStyle.Regular, SharpDX.Color.Gray);
+                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.Prediction", "Prediction:")).SetValue(new StringList(new[] {"LeagueSharp Common", "SPrediction (Synx)"})).SetFontStyle(FontStyle.Regular, SharpDX.Color.Gray);
                 nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.AutoLevel", "Auto Leveller:")).SetValue(true);
                 nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.AutoBush", "Auto Bush Ward:")).SetValue(true);
-                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.AutoPink", "Auto Pink Ward:"))
-                    .SetValue(true)
-                    .SetTooltip("For rengar / vayne / shaco etc.");
+                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.AutoPink", "Auto Pink Ward:")).SetValue(true).SetTooltip("For rengar / vayne / shaco etc.");
+                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.WarningSpells", "Warning Spells [NEW]:")).SetValue(true).SetTooltip("For Rengar R / Shaco Q etc.").SetFontStyle(FontStyle.Regular, SharpDX.Color.GreenYellow);
                 nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.Skin", "Skin Manager:")).SetValue(true);
-                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.Emote", "Emote:")).SetValue(false);
-                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.BuffTimer", "Buff Time Manager:"))
-                    .SetValue(false)
-                    .SetFontStyle(FontStyle.Regular, SharpDX.Color.Gray);
-                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.Potition", "Potition Manager:"))
-                    .SetValue(false)
-                    .SetFontStyle(FontStyle.Regular, SharpDX.Color.Gray);
-                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.Summoners", "Summoner Manager:"))
-                    .SetValue(false)
-                    .SetFontStyle(FontStyle.Regular, SharpDX.Color.Gray);
-                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.Tracker", "Tracker:"))
-                    .SetValue(false)
-                    .SetFontStyle(FontStyle.Regular, SharpDX.Color.Gray);
+                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.Emote", "Emote:")).SetValue(true);
+                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.AllySupport", "Ally Support:")).SetValue(true);
+                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.BuffTimer", "Buff Time Manager:")).SetValue(false).SetFontStyle(FontStyle.Regular, SharpDX.Color.Gray);
+                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.Potition", "Potition Manager:")).SetValue(false).SetFontStyle(FontStyle.Regular, SharpDX.Color.Gray);
+                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.Summoners", "Summoner Manager:")).SetValue(false).SetFontStyle(FontStyle.Regular, SharpDX.Color.Gray);
+                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.Tracker", "Tracker:")).SetValue(false).SetFontStyle(FontStyle.Regular, SharpDX.Color.Gray);
 
-                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.Reload", "Press F5 for Load Extra Tools!"))
-                    .SetFontStyle(FontStyle.Bold, SharpDX.Color.GreenYellow);
+                nMenuExtraToolsPackets.AddItem(new MenuItem("ExtraTools.Reload", "Press F5 for Load Extra Tools!")).SetFontStyle(FontStyle.Bold, SharpDX.Color.GreenYellow);
 
                 MenuExtraTools.AddSubMenu(nMenuExtraToolsPackets);
 
-                MenuExtraToolsActivePackets =
-                    new Menu("Installed Tools", "MenuExtraTools.Installed").SetFontStyle(FontStyle.Regular,
-                        SharpDX.Color.GreenYellow);
+                MenuExtraToolsActivePackets = new Menu("Installed Tools", "MenuExtraTools.Installed").SetFontStyle(FontStyle.Regular, SharpDX.Color.GreenYellow);
 
                 MenuExtraTools.AddSubMenu(MenuExtraToolsActivePackets);
             }
-
-
-            //Config.AddSubMenu(MenuExtraTools);
 
             CommonSettings.Init(Config);
 
             OrbWalking = Config.AddSubMenu(new Menu("Orbwalking", "Orbwalking"));
             ChampionClass.Orbwalker = new Orbwalking.Orbwalker(OrbWalking);
-            //Orb.Orbwalking.Orbwalker Orbwalker = new Orb.Orbwalking.Orbwalker(OrbWalking);
-
-
-            //if (MenuExtraTools.Item("ExtraTools.Orbwalker").GetValue<StringList>().SelectedIndex == 0)
-            //{
-            //    ChampionClass.OrbwalkerM = new Orbwalking.Orbwalker(OrbWalking);
-            //    Orbwalking.Orbwalker OrbwalkerM = new Orbwalking.Orbwalker(OrbWalking);
-            //}
-
-            //if (MenuExtraTools.Item("ExtraTools.Orbwalker").GetValue<StringList>().SelectedIndex == 1)
-            //{
-            //    ChampionClass.Orbwalker = new Orb.Orbwalking.Orbwalker(OrbWalking);
-            //    Orb.Orbwalking.Orbwalker Orbwalker = new Orb.Orbwalking.Orbwalker(OrbWalking);
-            //}
 
             MenuActivator = new Menu("Activator", "Activator").SetFontStyle(FontStyle.Regular, SharpDX.Color.Aqua);
             {
@@ -235,6 +209,11 @@ namespace Marksman
                 if (MenuExtraTools.Item("ExtraTools.AutoPink").GetValue<bool>())
                 {
                     CommonAutoPink.Initialize(MenuExtraToolsActivePackets);
+                }
+
+                if (MenuExtraTools.Item("ExtraTools.WarningSpells").GetValue<bool>())
+                {
+                    CommonWarningSpelss.Initialize(MenuExtraToolsActivePackets);
                 }
 
                 if (MenuExtraTools.Item("ExtraTools.AutoBush").GetValue<bool>())
@@ -252,15 +231,18 @@ namespace Marksman
                     CommonEmote.Init(MenuExtraToolsActivePackets);
                 }
 
+                if (MenuExtraTools.Item("ExtraTools.AllySupport").GetValue<bool>())
+                {
+                    CommonAlly.Init(MenuExtraToolsActivePackets);
+                }
+
                 /* Menu Items */
                 var items = MenuActivator.AddSubMenu(new Menu("Items", "Items"));
                 items.AddItem(new MenuItem("BOTRK", "BOTRK").SetValue(true));
                 items.AddItem(new MenuItem("GHOSTBLADE", "Ghostblade").SetValue(true));
                 items.AddItem(new MenuItem("SWORD", "Sword of the Divine").SetValue(true));
                 items.AddItem(new MenuItem("MURAMANA", "Muramana").SetValue(true));
-                items.AddItem(
-                    new MenuItem("UseItemsMode", "Use items on").SetValue(
-                        new StringList(new[] {"No", "Mixed mode", "Combo mode", "Both"}, 2)));
+                items.AddItem(new MenuItem("UseItemsMode", "Use items on").SetValue(new StringList(new[] {"No", "Mixed mode", "Combo mode", "Both"}, 2)));
             }
             Config.AddSubMenu(MenuActivator);
 
@@ -285,52 +267,61 @@ namespace Marksman
                     Config.AddSubMenu(harass);
                 }
 
-                var laneclear = new Menu("Lane Mode", "LaneClear");
-                if (ChampionClass.LaneClearMenu(laneclear))
+                var menuClear = new Menu("Farm / Jungle", "Mode.Clear");
                 {
-                    laneclear.AddItem(
-                        new MenuItem("Lane.Enabled", ":: Enable Lane Farm!").SetValue(new KeyBind("L".ToCharArray()[0],
-                            KeyBindType.Toggle, true)))
-                        .Permashow(true, "Marksman | Enable Lane Farm", SharpDX.Color.Aqua);
-
-                    var minManaMenu = new Menu("Min. Mana Settings", "Lane.MinMana.Title");
+                    MenuLane = new Menu("Lane", "Mode.Lane");
                     {
-                        minManaMenu.AddItem(
-                            new MenuItem("LaneMana.Alone", "If I'm Alone %:").SetValue(new Slider(30, 100, 0)))
-                            .SetFontStyle(FontStyle.Regular, SharpDX.Color.LightSkyBlue);
-                        minManaMenu.AddItem(
-                            new MenuItem("LaneMana.Enemy", "If Enemy Close %:").SetValue(new Slider(60, 100, 0)))
-                            .SetFontStyle(FontStyle.Regular, SharpDX.Color.IndianRed);
-                        laneclear.AddSubMenu(minManaMenu);
+                        if (ChampionClass.LaneClearMenu(MenuLane))
+                        {
+                            MenuLane.AddItem(new MenuItem("Lane.Min.Mana", ":: Min. Mana %:").SetValue(new Slider(60, 100, 0)));
+                        }
+                        menuClear.AddSubMenu(MenuLane);
                     }
-                    Config.AddSubMenu(laneclear);
+
+                    MenuJungle = new Menu("Jungle", "Mode.Jungle");
+                    {
+                        if (ChampionClass.JungleClearMenu(MenuJungle))
+                        {
+                            MenuJungle.AddItem(new MenuItem("Jungle.Min.Mana", ":: Min. Mana %:").SetValue(new Slider(30, 100, 0)));
+                            MenuJungle.AddItem(new MenuItem("Jungle.Items", ":: Use Items:").SetValue(new StringList(new[] { "Off", "Use for Baron", "Use for Baron", "Both" }, 3)));
+                            menuClear.AddSubMenu(MenuJungle);
+                        }
+                    }
+
+                    menuClear.AddItem(new MenuItem("Farm.Active", ":: Farm Active!").SetValue(new KeyBind("J".ToCharArray()[0], KeyBindType.Toggle, true))).Permashow(true, "Marksman | Farm", SharpDX.Color.Aqua);
+                    menuClear.AddItem(new MenuItem("Farm.Min.Mana.Control", ":: Min. Mana Control!").SetValue(new KeyBind("M".ToCharArray()[0], KeyBindType.Toggle, true))).Permashow(true, "Marksman | Farm Min. Mana Control", SharpDX.Color.Aqua);
+                    Config.AddSubMenu(menuClear);
                 }
 
-                var jungleClear = new Menu("Jungle Mode", "JungleClear");
-                if (ChampionClass.JungleClearMenu(jungleClear))
-                {
-                    var minManaMenu = new Menu("Min. Mana Settings", "Jungle.MinMana.Title");
-                    {
-                        minManaMenu.AddItem(
-                            new MenuItem("Jungle.Mana.Ally", "Ally Mobs %:").SetValue(new Slider(50, 100, 0)))
-                            .SetFontStyle(FontStyle.Regular, SharpDX.Color.LightSkyBlue);
-                        minManaMenu.AddItem(
-                            new MenuItem("Jungle.Mana.Enemy", "Enemy Mobs %:").SetValue(new Slider(30, 100, 0)))
-                            .SetFontStyle(FontStyle.Regular, SharpDX.Color.IndianRed);
-                        minManaMenu.AddItem(
-                            new MenuItem("Jungle.Mana.BigBoys", "Baron/Dragon %:").SetValue(new Slider(70, 100, 0)))
-                            .SetFontStyle(FontStyle.Regular, SharpDX.Color.HotPink);
-                        jungleClear.AddSubMenu(minManaMenu);
-                    }
-                    jungleClear.AddItem(
-                        new MenuItem("Jungle.Items", ":: Use Items:").SetValue(
-                            new StringList(new[] {"Off", "Use for Baron", "Use for Baron", "Both"}, 3)));
-                    jungleClear.AddItem(
-                        new MenuItem("Jungle.Enabled", ":: Enable Jungle Farm!").SetValue(
-                            new KeyBind("J".ToCharArray()[0], KeyBindType.Toggle, true)))
-                        .Permashow(true, "Marksman | Enable Jungle Farm", SharpDX.Color.Aqua);
-                    Config.AddSubMenu(jungleClear);
-                }
+
+                //var laneclear = new Menu("Lane Mode", "LaneClear");
+                //if (ChampionClass.LaneClearMenu(laneclear))
+                //{
+                //    laneclear.AddItem(new MenuItem("Lane.Enabled", ":: Enable Lane Farm!").SetValue(new KeyBind("L".ToCharArray()[0],KeyBindType.Toggle, true))).Permashow(true, "Marksman | Enable Lane Farm", SharpDX.Color.Aqua);
+
+                //    var minManaMenu = new Menu("Min. Mana Settings", "Lane.MinMana.Title");
+                //    {
+                //        minManaMenu.AddItem(new MenuItem("LaneMana.Alone", "If I'm Alone %:").SetValue(new Slider(30, 100, 0))).SetFontStyle(FontStyle.Regular, SharpDX.Color.LightSkyBlue);
+                //        minManaMenu.AddItem(new MenuItem("LaneMana.Enemy", "If Enemy Close %:").SetValue(new Slider(60, 100, 0))).SetFontStyle(FontStyle.Regular, SharpDX.Color.IndianRed);
+                //        laneclear.AddSubMenu(minManaMenu);
+                //    }
+                //    Config.AddSubMenu(laneclear);
+                //}
+
+                //var jungleClear = new Menu("Jungle Mode", "JungleClear");
+                //if (ChampionClass.JungleClearMenu(jungleClear))
+                //{
+                //    var minManaMenu = new Menu("Min. Mana Settings", "Jungle.MinMana.Title");
+                //    {
+                //        minManaMenu.AddItem(new MenuItem("Jungle.Mana.Ally", "Ally Mobs %:").SetValue(new Slider(50, 100, 0))).SetFontStyle(FontStyle.Regular, SharpDX.Color.LightSkyBlue);
+                //        minManaMenu.AddItem(new MenuItem("Jungle.Mana.Enemy", "Enemy Mobs %:").SetValue(new Slider(30, 100, 0))).SetFontStyle(FontStyle.Regular, SharpDX.Color.IndianRed);
+                //        minManaMenu.AddItem(new MenuItem("Jungle.Mana.BigBoys", "Baron/Dragon %:").SetValue(new Slider(70, 100, 0))).SetFontStyle(FontStyle.Regular, SharpDX.Color.HotPink);
+                //        jungleClear.AddSubMenu(minManaMenu);
+                //    }
+                //    jungleClear.AddItem(new MenuItem("Jungle.Items", ":: Use Items:").SetValue(new StringList(new[] {"Off", "Use for Baron", "Use for Baron", "Both"}, 3)));
+                //    jungleClear.AddItem(new MenuItem("Jungle.Enabled", ":: Enable Jungle Farm!").SetValue(new KeyBind("J".ToCharArray()[0], KeyBindType.Toggle, true))).Permashow(true, "Marksman | Enable Jungle Farm", SharpDX.Color.Aqua);
+                //    Config.AddSubMenu(jungleClear);
+                //}
 
                 /*----------------------------------------------------------------------------------------------------------*/
                 //Obj_AI_Base ally = (from aAllies in HeroManager.Allies
@@ -437,8 +428,9 @@ namespace Marksman
                     globalDrawings.AddItem(new MenuItem("Draw.KillableEnemy", "Killable Enemy Text").SetValue(false));
                     //GlobalDrawings.AddItem(new MenuItem("Draw.JunglePosition", "Jungle Farm Position").SetValue(new StringList(new[] { "Off", "If I'm Close to Mobs", "If Jungle Clear Active" }, 2)));
                     marksmanDrawings.AddSubMenu(globalDrawings);
-                    
                 }
+
+                //CreateButtons();
             }
 
             ChampionClass.MainMenu(Config);
@@ -466,6 +458,7 @@ namespace Marksman
             Drawing.OnDraw += Drawing_OnDraw;
             Drawing.OnEndScene += eventArgs =>
             {
+                //DrawButtons();
                 if (Config.Item("Draw.KillableEnemy").GetValue<bool>())
                 {
 
@@ -486,34 +479,43 @@ namespace Marksman
                     //}
                 }
             };
-            Game.OnUpdate += Game_OnUpdate;
+            Game.OnUpdate += GameOnUpdate;
+            Game.OnUpdate += delegate(EventArgs eventArgs) { ChampionClass.GameOnUpdate(eventArgs); };
+
             Game.OnUpdate += eventArgs =>
             {
-                if (ChampionClass.LaneClearActive)
-                {
-                    ExecuteLaneClear();
-                }
-
-                if (ChampionClass.JungleClearActive)
-                {
-                    ExecuteJungleClear();
-                }
-
-                PermaActive();
+                if (ChampionClass.ComboActive) ChampionClass.ExecuteCombo();
+                if (ChampionClass.LaneClearActive) ChampionClass.ExecuteLane();
+                if (ChampionClass.JungleClearActive) ChampionClass.ExecuteJungle();
+                ChampionClass.PermaActive();
             };
 
-            Orbwalking.AfterAttack += Orbwalking_AfterAttack;
-            Orbwalking.BeforeAttack += Orbwalking_BeforeAttack;
-            GameObject.OnCreate += OnCreateObject;
-            GameObject.OnDelete += OnDeleteObject;
+            Orbwalking.OnAttack += (unit, target) =>
+            {//
+               // if (unit.IsMe)
+                 //   Game.PrintChat("Attack");
+            };
+            Orbwalking.AfterAttack += (unit, target) => { ChampionClass.Orbwalking_AfterAttack(unit, target); };
+            Orbwalking.BeforeAttack += (eventArgs) => { ChampionClass.Orbwalking_BeforeAttack(eventArgs); };
+            
 
-            Drawing.OnEndScene += DrawingOnOnEndScene;
+            GameObject.OnCreate += (sender, eventArgs) => { ChampionClass.OnCreateObject(sender, args); };
+            GameObject.OnDelete += (sender, eventArgs) => { ChampionClass.OnDeleteObject(sender, args); };
 
-            Obj_AI_Base.OnBuffAdd += Obj_AI_Base_OnBuffAdd;
-            Obj_AI_Base.OnBuffRemove += Obj_AI_Base_OnBuffRemove;
+            Drawing.OnEndScene += eventArgs => { ChampionClass.DrawingOnEndScene(eventArgs); };
 
-            Spellbook.OnCastSpell += Spellbook_OnCastSpell;
-            Obj_AI_Base.OnProcessSpellCast += Obj_AI_Base_OnProcessSpellCast;
+            Obj_AI_Base.OnBuffAdd += (sender, eventArgs) => { ChampionClass.Obj_AI_Base_OnBuffAdd(sender, eventArgs); };
+            Obj_AI_Base.OnBuffRemove += (sender, eventArgs) => { ChampionClass.Obj_AI_Base_OnBuffRemove(sender, eventArgs); };
+            Obj_AI_Base.OnProcessSpellCast += (sender, eventArgs) => { ChampionClass.Obj_AI_Base_OnProcessSpellCast(sender, eventArgs); };
+            Obj_AI_Base.OnPlayAnimation += (sender, eventArgs) => { ChampionClass.Obj_AI_Base_OnPlayAnimation(sender, eventArgs); };
+
+            AntiGapcloser.OnEnemyGapcloser += (gapcloser) => { ChampionClass.AntiGapcloser_OnEnemyGapcloser(gapcloser); };
+
+            Spellbook.OnCastSpell += (sender, eventArgs) => { ChampionClass.Spellbook_OnCastSpell(sender, eventArgs); };
+
+            Interrupter2.OnInterruptableTarget += (sender, eventArgs) => { ChampionClass.Interrupter2_OnInterruptableTarget(sender, eventArgs); };
+
+            Obj_AI_Base.OnPlayAnimation += (sender, eventArgs) => { ChampionClass.Obj_AI_Base_OnPlayAnimation(sender, eventArgs); };
 
             Console.Clear();
         }
@@ -551,7 +553,6 @@ namespace Marksman
 
         private static void Drawing_OnDraw(EventArgs args)
         {
-//            return;
             var turnOffDrawings = Config.Item("Draw.TurnOff").GetValue<StringList>().SelectedIndex;
 
             if (turnOffDrawings == 0)
@@ -599,7 +600,7 @@ namespace Marksman
             ChampionClass?.Drawing_OnDraw(args);
         }
 
-        private static void Game_OnUpdate(EventArgs args)
+        private static void GameOnUpdate(EventArgs args)
         {
             //Update the combo and harass values.
             ChampionClass.ComboActive = ChampionClass.Config.Item("Orbwalk").GetValue<KeyBind>().Active;
@@ -612,50 +613,25 @@ namespace Marksman
                                          ChampionClass.Orbwalker.ActiveMode != Orbwalking.OrbwalkingMode.Combo &&
                                          !ObjectManager.Player.IsRecalling();
 
-            var vLaneClearManaPer = HeroManager.Enemies.Find(e => e.IsValidTarget(2000) && !e.IsZombie) == null
-                ? Config.Item("LaneMana.Alone").GetValue<Slider>().Value
-                : Config.Item("LaneMana.Enemy").GetValue<Slider>().Value;
+            #region LaneClearActive
+            ChampionClass.LaneClearActive = ChampionClass.Orbwalker.ActiveMode != Orbwalking.OrbwalkingMode.None &&
+                                            ChampionClass.Orbwalker.ActiveMode != Orbwalking.OrbwalkingMode.Combo &&
+                                            Config.Item("Farm.Active").GetValue<KeyBind>().Active &&
+                                            ObjectManager.Player.ManaPercent >= (Config.Item("Farm.Min.Mana.Control").GetValue<KeyBind>().Active ? Config.Item("Lane.Min.Mana").GetValue<Slider>().Value : 0);
+            #endregion LaneClearActive    
 
-            ChampionClass.LaneClearActive = ChampionClass.Config.Item("LaneClear").GetValue<KeyBind>().Active &&
-                                            ObjectManager.Player.ManaPercent >= vLaneClearManaPer &&
-                                            Config.Item("Lane.Enabled").GetValue<KeyBind>().Active;
+            #region JungleClearActive
+            ChampionClass.JungleClearActive = ChampionClass.Orbwalker.ActiveMode == Orbwalking.OrbwalkingMode.LaneClear &&
+                                              Config.Item("Farm.Active").GetValue<KeyBind>().Active &&
+                                              MinionManager.GetMinions(ObjectManager.Player.Position, LeagueSharp.Common.Orbwalking.GetRealAutoAttackRange(null) + 65, MinionTypes.All, MinionTeam.Neutral).Count > 0 &&
+                                              ObjectManager.Player.ManaPercent >= (Config.Item("Farm.Min.Mana.Control").GetValue<KeyBind>().Active ? Config.Item("Jungle.Min.Mana").GetValue<Slider>().Value : 0);
+            #endregion JungleClearActive
 
-            ChampionClass.JungleClearActive = false;
-            if (ChampionClass.Config.Item("LaneClear").GetValue<KeyBind>().Active &&
-                Config.Item("Jungle.Enabled").GetValue<KeyBind>().Active)
-            {
-                var mobs = MinionManager.GetMinions(ObjectManager.Player.Position, 1000, MinionTypes.All,
-                    MinionTeam.Neutral);
+            ChampionClass.LastHitActive = ChampionClass.Orbwalker.ActiveMode == Orbwalking.OrbwalkingMode.LastHit;
 
-                if (mobs.Count > 0)
-                {
-                    var minMana = Config.Item("Jungle.Mana.Enemy").GetValue<Slider>().Value;
-
-                    if (mobs[0].SkinName.ToLower().Contains("baron") || mobs[0].SkinName.ToLower().Contains("dragon") ||
-                        mobs[0].Team() == Jungle.GameObjectTeam.Neutral)
-                    {
-                        minMana = Config.Item("Jungle.Mana.BigBoys").GetValue<Slider>().Value;
-                    }
-
-                    else if (mobs[0].Team() == (Jungle.GameObjectTeam) ObjectManager.Player.Team)
-                    {
-                        minMana = Config.Item("Jungle.Mana.Ally").GetValue<Slider>().Value;
-                    }
-
-                    else if (mobs[0].Team() != (Jungle.GameObjectTeam) ObjectManager.Player.Team)
-                    {
-                        minMana = Config.Item("Jungle.Mana.Enemy").GetValue<Slider>().Value;
-                    }
-
-                    if (ObjectManager.Player.ManaPercent >= minMana)
-                    {
-                        ChampionClass.JungleClearActive = true;
-                    }
-                }
-            }
             //ChampionClass.JungleClearActive = ChampionClass.Config.Item("LaneClear").GetValue<KeyBind>().Active && ObjectManager.Player.ManaPercent >= Config.Item("Jungle.Mana").GetValue<Slider>().Value;
 
-            ChampionClass.Game_OnUpdate(args);
+            //ChampionClass.GameOnUpdate(args);
 
             UseSummoners();
             var useItemModes = Config.Item("UseItemsMode").GetValue<StringList>().SelectedIndex;
@@ -750,78 +726,8 @@ namespace Marksman
             }
         }
 
-        private static void Orbwalking_AfterAttack(AttackableUnit unit, AttackableUnit target)
-        {
-            ChampionClass.Orbwalking_AfterAttack(unit, target);
-        }
 
-        private static void Orbwalking_BeforeAttack(Orbwalking.BeforeAttackEventArgs args)
-        {
-            ChampionClass.Orbwalking_BeforeAttack(args);
-        }
-
-        private static void ExecuteJungleClear()
-        {
-            ChampionClass.ExecuteJungleClear();
-        }
-
-        private static void ExecuteLaneClear()
-        {
-            ChampionClass.ExecuteLaneClear();
-        }
-
-        private static void PermaActive()
-        {
-            ChampionClass.PermaActive();
-        }
-
-        private static void Obj_AI_Base_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
-        {
-            ChampionClass.Obj_AI_Base_OnProcessSpellCast(sender, args);
-        }
-
-        private static void Spellbook_OnCastSpell(Spellbook sender, SpellbookCastSpellEventArgs args)
-        {
-            if (Config.Item("Misc.SaveManaForUltimate").GetValue<bool>() &&
-                ObjectManager.Player.Spellbook.GetSpell(SpellSlot.R).Level > 0 &&
-                Math.Abs(ObjectManager.Player.Spellbook.GetSpell(SpellSlot.R).Cooldown) < 0.00001 &&
-                args.Slot != SpellSlot.R)
-            {
-                var lastMana = ObjectManager.Player.Mana - ObjectManager.Player.Spellbook.GetSpell(args.Slot).ManaCost;
-                if (lastMana < ObjectManager.Player.Spellbook.GetSpell(SpellSlot.R).ManaCost)
-                {
-                    args.Process = false;
-                }
-            }
-
-            ChampionClass.Spellbook_OnCastSpell(sender, args);
-        }
-
-        private static void OnCreateObject(GameObject sender, EventArgs args)
-        {
-            ChampionClass.OnCreateObject(sender, args);
-        }
-
-        private static void OnDeleteObject(GameObject sender, EventArgs args)
-        {
-            ChampionClass.OnDeleteObject(sender, args);
-        }
-
-        private static void DrawingOnOnEndScene(EventArgs args)
-        {
-            ChampionClass.DrawingOnEndScene(args);
-        }
-
-        private static void Obj_AI_Base_OnBuffAdd(Obj_AI_Base sender, Obj_AI_BaseBuffAddEventArgs args)
-        {
-            ChampionClass.Obj_AI_Base_OnBuffAdd(sender, args);
-        }
-
-        private static void Obj_AI_Base_OnBuffRemove(Obj_AI_Base sender, Obj_AI_BaseBuffRemoveEventArgs args)
-        {
-            ChampionClass.Obj_AI_Base_OnBuffRemove(sender, args);
-        }
-
+        
         private static void SetSmiteSlot()
         {
             foreach (
@@ -871,7 +777,6 @@ namespace Marksman
                 {
                     if (t.IsValidTarget())
                     {
-
                         //if (t.Health < ObjectManager.Player.TotalAttackDamage * (1 / ObjectManager.Player.AttackCastDelay > 1400 ? 8 : 4))
                         //{
                             x = (int)Math.Ceiling(t.Health / ObjectManager.Player.GetAutoAttackDamage(t));

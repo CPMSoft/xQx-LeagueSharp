@@ -1,459 +1,375 @@
-﻿#region
+﻿//JhinRShot : R Spell Name
+//JhinRShot : R Spell Ammo 
+#region
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using LeagueSharp;
 using LeagueSharp.Common;
+using Marksman.Common;
+using Marksman.Orb;
 using SharpDX;
-using SharpDX.Direct3D9;
+using Collision = LeagueSharp.Common.Collision;
+using Color = System.Drawing.Color;
+using Orbwalking = Marksman.Orb.Orbwalking;
 
 #endregion
 
 namespace Marksman.Champions
 {
+    public class MarksmanSpell
+    {
+        CollisionTypes[] CollisitonType = new CollisionTypes[] {};
+
+        private Spell Q;
+        private Spell W;
+        private Spell E;
+        private Spell R;
+        private static CommonGeometry.Polygon toPolygon;
+        
+        public enum CollisionTypes
+        {
+            AllyMinion,
+            EnemyMinion,
+            Mobs,
+            AllyHero,
+            EnemyHero,
+            AllyChampionObjects,
+            EnemyChampionObjects,
+            Wall,
+            YasuoWall,
+        }
+
+        public void Cast(Obj_AI_Hero t)
+        {
+            if (mSkillshotType == SkillshotType.SkillshotCone)
+            if (MNSpellSlot == SpellSlot.Q)
+            {
+                Spell xSpell = new Spell(MNSpellSlot, mRange, mDamageType)
+                {
+                    Collision = mCollision,
+                    Speed = mSpeed,
+                    Width = mWidth
+                };
+
+                Q.Cast(t);
+            }
+        }
+
+        public void Cast(Obj_AI_Base target)
+        {
+            
+        }
+
+        public void Cast(Vector3 position)
+        {
+
+        }
+
+        public MarksmanSpell(SpellSlot nSpellSlot, TargetSelector.DamageType nDamageType, float nRange, float nDelay, float nWidth, float nSpeed, SkillshotType nSkillshotType, bool nCollision, CollisionTypes[] nCollisions)
+        {
+            MNSpellSlot = nSpellSlot;
+            mDamageType = nDamageType;
+            mRange = nRange;
+            mDelay = nDelay;
+            mWidth = nWidth;
+            mSpeed = nSpeed;
+            mCollision = nCollision;
+            mCollisions = nCollisions;
+        }
+
+        public SpellSlot MNSpellSlot { get; set; }
+        public TargetSelector.DamageType mDamageType { get; set; }
+        public float mRange { get; set; }
+        public float mDelay { get; set; }
+        public float mWidth { get; set; }
+        public float mSpeed { get; set; }
+        public SkillshotType mSkillshotType { get; set; }
+        public bool mCollision { get; set; }
+        public CollisionTypes[] mCollisions { get; set; }
+
+        public MarksmanSpell() { }
+    }
+
+    internal class ObjectDraw
+    {
+        public Color Color { get; set; }
+        public Vector3 Position => Object.Position;
+        public float Radius => Object.BoundingRadius;
+        public GameObject Object { get; set; }
+        public float Start { get; set; }
+        public float End { get; set; }
+    }
+
+
     internal class Jhin : Champion
     {
-        public static Spell Q;
+        private Spell Q { get; set; }
+        private static Spell W { get; set; }
+        private Spell E { get; set; }
+        private Spell R { get; set; }
+        private Vector3 direction;
+        public MarksmanSpell QSpell { private get; set; }
+        public MarksmanSpell WSpell { private get; set; }
 
-        public static Spell W;
 
-        public static Spell E;
+        public override void Obj_AI_Base_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
+        {
+            if (sender.IsMe)
+                Console.WriteLine(args.SData.Name);
 
-        public static Spell R;
+            //JhinRShot : R Spell Ammo 
+        }
+
+
+
 
         public Jhin()
         {
-            Q = new Spell(SpellSlot.Q, 600);
-            W = new Spell(SpellSlot.W, 2400);
-            E = new Spell(SpellSlot.E, 750);
-            R = new Spell(SpellSlot.R, 3500);
-
-            W.SetSkillshot(250f, (float)(45f * Math.PI / 180), 900f, true, SkillshotType.SkillshotCone);
-            E.SetSkillshot(377f, 299f, 1400f, false, SkillshotType.SkillshotLine);
-            R.SetSkillshot(250f, 130f, 1600f, false, SkillshotType.SkillshotLine);
-
-            Obj_AI_Base.OnProcessSpellCast += Game_OnProcessSpell;
-            Interrupter2.OnInterruptableTarget += Interrupter2_OnInterruptableTarget;
-            Drawing.OnEndScene += DrawingOnOnEndScene;
-            Utility.HpBarDamageIndicator.DamageToUnit = GetComboDamage;
-            Utility.HpBarDamageIndicator.Enabled = true;
-
-            Obj_AI_Base.OnBuffAdd += (sender, args) =>
+            QSpell = new MarksmanSpell
             {
-                BuffInstance aBuff =
-                    (from fBuffs in
-                         sender.Buffs.Where(
-                             s =>
-                             sender.Team != ObjectManager.Player.Team
-                             && sender.Distance(ObjectManager.Player.Position) < 2500)
-                     from b in new[] { "katarinar", "MissFortuneBulletTime", "crowstorm" }
-
-                     where b.Contains(args.Buff.Name.ToLower())
-                     select fBuffs).FirstOrDefault();
-
-                if (aBuff != null && E.IsReady())
-                {
-                    R.Cast(sender.Position);
-                }
+                MNSpellSlot = SpellSlot.Q,
+                mRange = 600f
             };
 
-            Utils.Utils.PrintMessage("Jhin loaded.");
-        }
-
-        private static bool JhinQCastReady
-        {
-            get
+            WSpell = new MarksmanSpell
             {
-                return ObjectManager.Player.HasBuff("JhinQCastReady", true);
-            }
-        }
+                MNSpellSlot = SpellSlot.W,
+                mRange = 2500f,
+                mDelay = 0.90f,
+                mWidth = 30f,
+                mSpeed = float.MaxValue,
+                mSkillshotType = SkillshotType.SkillshotLine,
+                mCollision = true,
+                mCollisions =
+                    new[]
+                    {
+                        MarksmanSpell.CollisionTypes.AllyHero,
+                        MarksmanSpell.CollisionTypes.YasuoWall,
+                        MarksmanSpell.CollisionTypes.EnemyHero
+                    },
+            };
 
-        public bool IsQActive
-        {
-            get
+            Q = new Spell
             {
-                return ObjectManager.Player.HasBuff("FrostShot");
-            }
-        }
-
-        private void Interrupter2_OnInterruptableTarget(
-            Obj_AI_Hero unit,
-            Interrupter2.InterruptableTargetEventArgs args)
-        {
-            if (R.IsReady() && Config.Item("RInterruptable" + Id).GetValue<bool>() && unit.IsValidTarget(1500))
+                Slot = SpellSlot.Q,
+                Range = 600,
+            };
+            
+            W = new Spell
             {
-                R.Cast(unit);
-            }
+                Slot = SpellSlot.W,
+                Range = 2500,
+                Delay = 1.10f,
+                Width = 30,
+                Collision = false,
+                Speed = float.MaxValue,
+                Type = SkillshotType.SkillshotLine
+            };
+            
+            E = new Spell
+            {
+                Slot = SpellSlot.E,
+                Range = 760,
+                Delay = 1f,
+                Width = 130,
+                Speed = 1500,
+                Type = SkillshotType.SkillshotCircle,
+            };
+            
+            R = new Spell
+            {
+                Slot = SpellSlot.R,
+                Range = 3500,
+                Delay = 0.25f,
+                Width = 80,
+                Speed = 5500,
+                Type = SkillshotType.SkillshotLine
+            };
+
+            Utils.Utils.PrintMessage("Jhin");
         }
 
-        private static float GetComboDamage(Obj_AI_Hero t)
+        public override void GameOnUpdate(EventArgs args)
         {
-            var fComboDamage = 0f;
+            //Console.WriteLine(ObjectManager.Player.Spellbook.GetSpell(SpellSlot.R).Name + " : " + ObjectManager.Player.Spellbook.GetSpell(SpellSlot.R).Ammo);
 
-            if (W.IsReady()) fComboDamage += (float)ObjectManager.Player.GetSpellDamage(t, SpellSlot.W);
-
-            if (R.IsReady()) fComboDamage += (float)ObjectManager.Player.GetSpellDamage(t, SpellSlot.R);
-
-            if (ObjectManager.Player.GetSpellSlot("summonerdot") != SpellSlot.Unknown
-                && ObjectManager.Player.Spellbook.CanUseSpell(ObjectManager.Player.GetSpellSlot("summonerdot"))
-                == SpellState.Ready && ObjectManager.Player.Distance(t) < 550) fComboDamage += (float)ObjectManager.Player.GetSummonerSpellDamage(t, Damage.SummonerSpell.Ignite);
-
-            if (Items.CanUseItem(3144) && ObjectManager.Player.Distance(t) < 550) fComboDamage += (float)ObjectManager.Player.GetItemDamage(t, Damage.DamageItems.Bilgewater);
-
-            if (Items.CanUseItem(3153) && ObjectManager.Player.Distance(t) < 550) fComboDamage += (float)ObjectManager.Player.GetItemDamage(t, Damage.DamageItems.Botrk);
-
-            return fComboDamage;
         }
 
-        public void Game_OnProcessSpell(Obj_AI_Base unit, GameObjectProcessSpellCastEventArgs spell)
+        private static List<Obj_AI_Base> CollisionObjects(Spell spell, Obj_AI_Hero source, Obj_AI_Hero target, CollisionableObjects[] collisionableObjects)
         {
-            if (!Config.Item("EFlash" + Id).GetValue<bool>() || unit.Team == ObjectManager.Player.Team)
+            var input = new PredictionInput
+            {
+                Unit = source,
+                Radius = spell.Width,
+                Delay = spell.Delay,
+                Speed = spell.Speed,
+                CollisionObjects = collisionableObjects,//{[0] = CollisionableObjects.Heroes, [1] = CollisionableObjects.YasuoWall},
+            };
+            
+            return
+                Collision.GetCollision(new List<Vector3> { target.Position }, input).Where(obj => obj.NetworkId != target.NetworkId)
+                    .OrderBy(obj => obj.Distance(source, false))
+                    .ToList();
+        }
+
+        public override void Drawing_OnDraw(EventArgs args)
+        {
+                direction = ObjectManager.Player.ServerPosition.Extend(ObjectManager.Player.Direction, -1500);
+            //var radian = (float)Math.PI / 180f;
+            //var targetPosition = ObjectManager.Player.Position;
+
+            ////new Geometry.Polygon.Sector(targetPosition, direction, 40f * radian, 450f).Draw(Color.Red);
+            ////new CommonGeometry.Rectangle(targetPosition.To2D(), direction.To2D(), 50).ToPolygon().Draw(Colo
+            var x = ObjectManager.Player.Direction.To2D();
+
+            var toPolygon =
+                        new CommonGeometry.Rectangle(ObjectManager.Player.Position.To2D(),
+                            ObjectManager.Player.Position.To2D()
+                                .Extend(direction.To2D(), 800), 50).ToPolygon();
+
+            toPolygon.Draw(System.Drawing.Color.Red, 1);
+
+
+
+            var t = TargetSelector.GetTarget(R.Range, TargetSelector.DamageType.Physical);
+            if (!t.IsValidTarget())
             {
                 return;
             }
-
-            if (spell.SData.Name.ToLower() == "summonerflash" && unit.Distance(ObjectManager.Player.Position) < 2000)
+            var xCol = CollisionObjects(W, ObjectManager.Player, t, new[] { CollisionableObjects.Heroes, CollisionableObjects.YasuoWall });
+                Console.WriteLine(xCol.Count.ToString());
+            foreach (
+               var colminion in
+                   CollisionObjects(W, ObjectManager.Player, t, new[] { CollisionableObjects.Heroes, CollisionableObjects.YasuoWall }))
             {
-                E.Cast(spell.End);
+                Render.Circle.DrawCircle(colminion.Position, 105f, Color.Yellow);
+                Console.WriteLine(colminion.CharData.BaseSkinName);
             }
-        }
+            return;
 
-        public override void Game_OnGameUpdate(EventArgs args)
-        {
-            if (!ComboActive)
+            foreach (var buff in ObjectManager.Player.Buffs)
             {
-                var t = TargetSelector.GetTarget(W.Range, TargetSelector.DamageType.Physical);
-                if (!t.IsValidTarget() || !W.IsReady()) return;
-
-                if (Program.Config.Item("UseWTH").GetValue<KeyBind>().Active)
-                {
-                    if (ObjectManager.Player.HasBuff("Recall")) return;
-                    W.Cast(t);
-                }
-
-                if (t.HasBuffOfType(BuffType.Stun) || t.HasBuffOfType(BuffType.Snare) || t.HasBuffOfType(BuffType.Charm)
-                    || t.HasBuffOfType(BuffType.Fear) || t.HasBuffOfType(BuffType.Taunt)
-                    || t.HasBuff("zhonyasringshield") || t.HasBuff("Recall"))
-                {
-                    W.Cast(t.Position);
-                }
+                Console.WriteLine(buff.Name + " : " + buff.Count);
             }
-
-            /* [ Combo ] */
-            if (ComboActive)
+            Console.WriteLine("-------------------");
+            return;
+            Spell[] spellList = { Q, W, E };
+            foreach (var spell in spellList)
             {
-                var useW = Config.Item("UseWC" + Id).GetValue<bool>();
-
-                var t = TargetSelector.GetTarget(W.Range, TargetSelector.DamageType.Physical);
-
-                if (Q.IsReady() && JhinQCastReady)
-                {
-                    if (t.IsValidTarget(Marksman.Utils.Orbwalking.GetRealAutoAttackRange(null) + 90))
-                    {
-                        Q.Cast();
-                    }
-                }
-
-                if (useW && W.IsReady() && t.IsValidTarget())
-                {
-                    W.Cast(t);
-                }
-
-                var useR = Program.Config.SubMenu("Combo").Item("UseRC").GetValue<bool>();
-                if (useR && R.IsReady())
-                {
-                    var minRRange = Program.Config.SubMenu("Combo").Item("UseRCMinRange").GetValue<Slider>().Value;
-                    var maxRRange = Program.Config.SubMenu("Combo").Item("UseRCMaxRange").GetValue<Slider>().Value;
-
-                    t = TargetSelector.GetTarget(maxRRange, TargetSelector.DamageType.Physical);
-                    if (!t.IsValidTarget()) return;
-
-                    var aaDamage = Marksman.Utils.Orbwalking.InAutoAttackRange(t)
-                                       ? ObjectManager.Player.GetAutoAttackDamage(t, true)
-                                       : 0;
-
-                    if (t.Health > aaDamage && t.Health <= ObjectManager.Player.GetSpellDamage(t, SpellSlot.R)
-                        && ObjectManager.Player.Distance(t) >= minRRange)
-                    {
-                        R.Cast(t);
-                    }
-                }
-            }
-
-            //Harass
-            if (HarassActive)
-            {
-                var target = TargetSelector.GetTarget(1200, TargetSelector.DamageType.Physical);
-                if (target == null) return;
-
-                if (Config.Item("UseWH" + Id).GetValue<bool>() && W.IsReady()) W.Cast(target);
-            }
-
-            //Manual cast R
-            if (Config.Item("RManualCast" + Id).GetValue<KeyBind>().Active)
-            {
-                var rTarget = TargetSelector.GetTarget(2000, TargetSelector.DamageType.Physical);
-                R.Cast(rTarget);
-            }
-        }
-
-        public override void ExecuteJungleClear()
-        {
-            if (Q.IsReady() && JhinQCastReady)
-            {
-                var jE = GetValue<StringList>("UseQJ").SelectedIndex;
-                if (jE != 0)
-                {
-                    if (jE == 1)
-                    {
-                        var jungleMobs = Utils.Utils.GetMobs(
-                            Marksman.Utils.Orbwalking.GetRealAutoAttackRange(null) + 65,
-                            Utils.Utils.MobTypes.BigBoys);
-                        if (jungleMobs != null)
-                        {
-                            Q.Cast();
-                        }
-                    }
-                    else
-                    {
-                        var totalAa =
-                            MinionManager.GetMinions(
-                                ObjectManager.Player.Position,
-                                Marksman.Utils.Orbwalking.GetRealAutoAttackRange(null) + 165,
-                                MinionTypes.All,
-                                MinionTeam.Neutral).Sum(mob => (int)mob.Health);
-                        totalAa = (int)(totalAa / ObjectManager.Player.TotalAttackDamage());
-                        if (totalAa > jE)
-                        {
-                            Q.Cast();
-                        }
-                    }
-                }
-            }
-
-            if (W.IsReady())
-            {
-                var jungleMobs = Marksman.Utils.Utils.GetMobs(W.Range, Marksman.Utils.Utils.MobTypes.All);
-                if (jungleMobs != null)
-                {
-                    var jW = GetValue<StringList>("UseWJ").SelectedIndex;
-                    switch (jW)
-                    {
-                        case 1:
-                            {
-                                jungleMobs = Marksman.Utils.Utils.GetMobs(
-                                    W.Range,
-                                    Marksman.Utils.Utils.MobTypes.All,
-                                    jW);
-                                W.CastOnUnit(jungleMobs);
-                                break;
-                            }
-                        case 2:
-                            {
-                                jungleMobs = Utils.Utils.GetMobs(W.Range, Utils.Utils.MobTypes.BigBoys);
-                                if (jungleMobs != null)
-                                {
-                                    W.CastOnUnit(jungleMobs);
-                                }
-                                break;
-                            }
-                    }
-                }
-            }
-        }
-
-        public override void ExecuteLaneClear()
-        {
-            if (Q.IsReady() && JhinQCastReady)
-            {
-                var jQ = GetValue<StringList>("UseQ.Lane").SelectedIndex;
-                if (jQ != 0)
-                {
-                    var totalAa =
-                        ObjectManager.Get<Obj_AI_Minion>()
-                            .Where(
-                                m => m.IsEnemy && !m.IsDead && m.IsValidTarget(Marksman.Utils.Orbwalking.GetRealAutoAttackRange(null)))
-                            .Sum(mob => (int)mob.Health);
-
-                    totalAa = (int)(totalAa / ObjectManager.Player.TotalAttackDamage());
-                    if (totalAa > jQ)
-                    {
-                        Q.Cast();
-                    }
-
-                }
-            }
-
-            if (E.IsReady())
-            {
-                var minions = MinionManager.GetMinions(
-                    ObjectManager.Player.Position,
-                    E.Range,
-                    MinionTypes.All,
-                    MinionTeam.Enemy);
-
-                if (minions != null)
-                {
-                    var jE = GetValue<StringList>("UseW.Lane").SelectedIndex;
-                    if (jE != 0)
-                    {
-                        var mE = MinionManager.GetMinions(ObjectManager.Player.ServerPosition, W.Range, MinionTypes.All);
-                        if (mE.Count >= jE)
-                        {
-                            W.Cast(mE[0].Position);
-                        }
-                    }
-                }
+                var menuItem = GetValue<Circle>("Draw" + spell.Slot);
+                if (menuItem.Active)
+                    Render.Circle.DrawCircle(ObjectManager.Player.Position, spell.Range, menuItem.Color);
             }
         }
 
         public override bool ComboMenu(Menu config)
         {
-            config.AddItem(new MenuItem("UseWC" + Id, "W").SetValue(true));
-
-            var xRMenu = new Menu("R", "ComboR");
-            {
-                xRMenu.AddItem(new MenuItem("UseRC", "Use").SetValue(true));
-                xRMenu.AddItem(new MenuItem("UseRCMinRange", "Min. Range").SetValue(new Slider(200, 200, 1000)));
-                xRMenu.AddItem(new MenuItem("UseRCMaxRange", "Max. Range").SetValue(new Slider(500, 500, 2000)));
-                xRMenu.AddItem(
-                    new MenuItem("DrawRMin", "Draw Min. R Range").SetValue(
-                        new Circle(true, System.Drawing.Color.DarkRed)));
-                xRMenu.AddItem(
-                    new MenuItem("DrawRMax", "Draw Max. R Range").SetValue(
-                        new Circle(true, System.Drawing.Color.DarkMagenta)));
-
-                config.AddSubMenu(xRMenu);
-            }
+            config.AddItem(new MenuItem("Combo.Use.Q" + Id, "Q:").SetValue(true));
+            config.AddItem(new MenuItem("Combo.Use.W" + Id, "W:").SetValue(true));
+            config.AddItem(new MenuItem("Combo.Use.E" + Id, "E:").SetValue(true));
+            config.AddItem(new MenuItem("Combo.Use.R" + Id, "R: Semi-Auto").SetValue(true)).SetTooltip("Select a target and Press R");
             return true;
         }
 
+        public override void ExecuteCombo()
+        {
+            var t = TargetSelector.GetTarget(R.Range, TargetSelector.DamageType.Physical);
+            if (!t.IsValidTarget())
+            {
+                return;
+            }
+
+            if (GetValue<bool>("Combo.Use.W") && W.IsReady())
+            {
+                foreach (var e in HeroManager.Enemies.Where(e => e.IsValidTarget(W.Range) && CollisionObjects(W, ObjectManager.Player, e, new[] { CollisionableObjects.Heroes, CollisionableObjects.YasuoWall }).Count == 0))
+                {
+                    if (e.Health < W.GetDamage(t) * 0.85)
+                    {
+                        W.CastIfHitchanceGreaterOrEqual(t);
+                    }
+
+                    if (e.HasBuff("jhinespotteddebuff"))
+                    {
+                        if (t.HasBuffOfType(BuffType.Stun) || t.HasBuffOfType(BuffType.Snare) || t.HasBuffOfType(BuffType.Slow) || t.HasBuffOfType(BuffType.Knockup) && !t.CanMove)
+                        {
+                            W.CastIfHitchanceEquals(t, HitChance.High);
+                        }
+                        else
+                        {
+                            W.CastIfHitchanceGreaterOrEqual(t);
+                        }
+                    }
+                }
+            }
+
+            //if ( W.CanCast(t) && CollisionObjects(W, ObjectManager.Player, t, new[] { CollisionableObjects.Heroes, CollisionableObjects.YasuoWall }).Count > 0)
+            //{
+            //    if (t.Health < W.GetDamage(t))
+            //    {
+            //        W.CastIfHitchanceGreaterOrEqual(t);
+            //    }
+
+            //    if (t.HasBuff("jhinespotteddebuff"))
+            //    {
+            //        if (t.HasBuffOfType(BuffType.Stun) || t.HasBuffOfType(BuffType.Snare) || t.HasBuffOfType(BuffType.Slow) || t.HasBuffOfType(BuffType.Knockup) && !t.CanMove)
+            //        {
+            //            W.CastIfHitchanceEquals(t, HitChance.High);
+            //        }
+            //        else
+            //        {
+            //            W.CastIfHitchanceGreaterOrEqual(t);
+            //        }
+            //    }
+            //}
+
+            if (GetValue<bool>("Combo.Use.E") && E.CanCast(t))
+            {
+                if (t.HasBuffOfType(BuffType.Slow))
+                {
+                    if (t.Path.Count() > 1)
+                    {
+                        var slowEndTime = t.GetSlowEndTime();
+                        if (slowEndTime >= E.Delay + 0.5f + Game.Ping / 2f)
+                        {
+                            E.CastIfHitchanceGreaterOrEqual(t);
+                        }
+                    }
+                }
+
+                if (t.IsHeavilyImpaired())
+                {
+                    var immobileEndTime = t.GetImpairedEndTime();
+                    if (immobileEndTime >= E.Delay + 0.5f + Game.Ping / 2f)
+                    {
+                        E.CastIfHitchanceGreaterOrEqual(t);
+                    }
+                }
+            }
+        }
         public override bool HarassMenu(Menu config)
         {
-            config.AddItem(new MenuItem("UseWH" + Id, "W").SetValue(true));
-            config.AddItem(
-                new MenuItem("UseWTH", "Use W (Toggle)").SetValue(new KeyBind("H".ToCharArray()[0], KeyBindType.Toggle)));
-            return true;
-        }
-
-        public override bool LaneClearMenu(Menu config)
-        {
-            string[] strQ = new string[7];
-            strQ[0] = "Off";
-
-            for (var i = 1; i < 7; i++)
-            {
-                strQ[i] = "If need to AA more than >= " + i;
-            }
-
-            config.AddItem(new MenuItem("UseQ.Lane" + Id, Utils.Utils.Tab + "Use Q:").SetValue(new StringList(strQ, 0)));
-
-            string[] strW = new string[5];
-            strW[0] = "Off";
-
-            for (var i = 1; i < 5; i++)
-            {
-                strW[i] = "If W it'll Hit >= " + i;
-            }
-
-            config.AddItem(new MenuItem("UseW.Lane" + Id, Utils.Utils.Tab + "Use W:").SetValue(new StringList(strW, 0)));
-
-            config.AddItem(
-                new MenuItem("UseQ.Lane.UnderTurret" + Id, Utils.Utils.Tab + "Always Use Q Under Ally Turrent:")
-                    .SetValue(true));
-            config.AddItem(
-                new MenuItem("UseW.Lane.UnderTurret" + Id, Utils.Utils.Tab + "Always Use W Under Ally Turrent:")
-                    .SetValue(true));
-            return true;
-        }
-
-        public override bool JungleClearMenu(Menu config)
-        {
-            string[] strQ = new string[8];
-            {
-                strQ[0] = "Off";
-                strQ[1] = "Just for big Monsters";
-
-                for (var i = 2; i < 8; i++)
-                {
-                    strQ[i] = "If need to AA more than >= " + i;
-                }
-
-                config.AddItem(new MenuItem("UseQJ" + Id, "Use Q").SetValue(new StringList(strQ, 4)));
-            }
-
-            string[] strW = new string[4];
-            {
-                strW[0] = "Off";
-                strW[1] = "Just for big Monsters";
-
-                for (var i = 2; i < 4; i++)
-                {
-                    strW[i] = "If Mobs Count >= " + i;
-                }
-
-                config.AddItem(new MenuItem("UseWJ" + Id, "Use W").SetValue(new StringList(strW, 1)));
-            }
+            config.AddItem(new MenuItem("UseQH" + Id, "Use Q").SetValue(false));
+            config.AddItem(new MenuItem("UseWH" + Id, "Use W").SetValue(false));
             return true;
         }
 
         public override bool DrawingMenu(Menu config)
         {
-            config.AddItem(new MenuItem("Draw.X", "W range").SetValue(new Slider(500,0, 4000)));
-
-            //config.AddItem(new MenuItem("DrawW" + Id, "W range").SetValue(new Circle(true, System.Drawing.Color.CornflowerBlue)));
+            config.AddItem(new MenuItem("DrawQ" + Id, "Q:").SetValue(new Circle(true, Color.FromArgb(100, 255, 0, 255))));
+            config.AddItem(new MenuItem("DrawW" + Id, "W:").SetValue(new Circle(true, Color.FromArgb(100, 255, 0, 255))));
+            config.AddItem(new MenuItem("DrawE" + Id, "E:").SetValue(new Circle(true, Color.FromArgb(100, 255, 0, 255))));
             return true;
         }
 
-        private static void DrawingOnOnEndScene(EventArgs args)
+        public override bool LaneClearMenu(Menu menuLane)
         {
-            Utility.DrawCircle(ObjectManager.Player.Position, W.Range, System.Drawing.Color.White, 1, 23, true);
-            Utility.DrawCircle(ObjectManager.Player.Position, R.Range, System.Drawing.Color.Aqua, 1, 23, true);
-            var rCircle2 = Program.Config.Item("Draw.X").GetValue<Slider>().Value;
-                Utility.DrawCircle(ObjectManager.Player.Position, rCircle2, System.Drawing.Color.Red, 1, 23, true);
-        }
-
-        public override bool MiscMenu(Menu config)
-        {
-            config.AddItem(new MenuItem("RInterruptable" + Id, "Auto R Interruptable Spells").SetValue(true));
-            config.AddItem(new MenuItem("EFlash" + Id, "Use E against FlJhins").SetValue(true));
-            config.AddItem(new MenuItem("RManualCast" + Id, "Cast R Manually(2000 range)"))
-                .SetValue(new KeyBind('T', KeyBindType.Press));
             return true;
         }
-
-        public override void Drawing_OnDraw(EventArgs args)
+        public override bool JungleClearMenu(Menu menuJungle)
         {
-            var drawx = Config.Item("Draw.X").GetValue<Slider>().Value;
-            Render.Circle.DrawCircle(ObjectManager.Player.Position, drawx, System.Drawing.Color.Red);
-            return;
-            //foreach (var e in HeroManager.Enemies.Where(e => e.IsValidTarget(3500)))
-            //{
-            //    var x = new Geometry.Polygon.Line(e.Position, e.Path[0]);
-
-            //    x.Draw(System.Drawing.Color.Red, 3);
-
-            //}
-            //return;
-            var drawW = Config.Item("DrawW" + Id).GetValue<Circle>();
-            if (drawW.Active)
-            {
-                Render.Circle.DrawCircle(ObjectManager.Player.Position, W.Range, drawW.Color);
-            }
-
-            var drawRMin = Program.Config.SubMenu("Combo").Item("DrawRMin").GetValue<Circle>();
-            if (drawRMin.Active)
-            {
-                var minRRange = Program.Config.SubMenu("Combo").Item("UseRCMinRange").GetValue<Slider>().Value;
-                Render.Circle.DrawCircle(ObjectManager.Player.Position, minRRange, drawRMin.Color, 2);
-            }
-
-            var drawRMax = Program.Config.SubMenu("Combo").Item("DrawRMax").GetValue<Circle>();
-            if (drawRMax.Active)
-            {
-                var maxRRange = Program.Config.SubMenu("Combo").Item("UseRCMaxRange").GetValue<Slider>().Value;
-                Render.Circle.DrawCircle(ObjectManager.Player.Position, maxRRange, drawRMax.Color, 2);
-            }
+            return false;
         }
     }
 }

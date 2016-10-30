@@ -13,7 +13,6 @@ namespace Marksman
         Dictionary<string, SpellSlot> dangerDictionary = new Dictionary<string, SpellSlot>();
         public DangerousTargets()
         {
-
             dangerDictionary.Add("alistar", SpellSlot.W);
             dangerDictionary.Add("amumu", SpellSlot.Q);
             dangerDictionary.Add("annie", SpellSlot.R);
@@ -66,9 +65,7 @@ namespace Marksman
             dangerDictionary.Add("vi", SpellSlot.R);
             dangerDictionary.Add("volibear", SpellSlot.Q);
 
-
-
-
+            
             dangerDictionary.Add("garen", SpellSlot.R);
             dangerDictionary.Add("leona", SpellSlot.E);
             

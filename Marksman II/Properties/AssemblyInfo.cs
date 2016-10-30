@@ -9,11 +9,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 
-[assembly: AssemblyTitle("Marksman Lite")]
+[assembly: AssemblyTitle("Marksman II")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("Marksman Lite")]
+[assembly: AssemblyProduct("Marksman II")]
 [assembly: AssemblyCopyright("Copyright ©  2015")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -40,6 +40,6 @@ using System.Runtime.InteropServices;
 // [assembly: AssemblyVersion("1.0.*")]
 
 
-[assembly: AssemblyVersion("6.13.0.2")]
-[assembly: AssemblyFileVersion("6.13.0.2")]
+[assembly: AssemblyVersion("6.21.0.1")]
+[assembly: AssemblyFileVersion("6.21.0.1")]
 

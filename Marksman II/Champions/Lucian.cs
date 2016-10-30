@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Globalization;
 using System.Linq;
 using LeagueSharp;
 using LeagueSharp.Common;
@@ -18,79 +19,136 @@ namespace Marksman.Champions
 {
     internal class Lucian : Champion
     {
-        public static Spell Q, Q2;
+        private static bool havePassive => ObjectManager.Player.HasBuff("lucianpassivebuff");
+        private int PassiveStartedTime;
 
-        public static Spell W;
+        public static Spell Q, qExtended;
+
+        public static Spell W, wNoCollision;
 
         public static Spell E;
 
         public static Spell R;
 
         public static bool DoubleHit = false;
+        private int aaCount;
 
-        private static int xAttackLeft;
+        private static CommonGeometry.Polygon toPolygon;
 
-        private static float xPassiveUsedTime;
+
+        private bool hasPassive;
 
         public Lucian()
         {
-            Utils.Utils.PrintMessage("Lucian loaded.");
+            Q = new Spell(SpellSlot.Q, 750f, TargetSelector.DamageType.Physical) { MinHitChance = HitChance.High };
 
-            Q = new Spell(SpellSlot.Q, 760);
-            Q2 = new Spell(SpellSlot.Q, 1100);
-            W = new Spell(SpellSlot.W, 1000);
+            qExtended = new Spell(SpellSlot.Q, 1100f, TargetSelector.DamageType.Physical);
+            qExtended.SetSkillshot(0.5f, 65f, float.MaxValue, false, SkillshotType.SkillshotLine);
 
-            Q.SetSkillshot(0.45f, 60f, 1100f, false, SkillshotType.SkillshotLine);
-            W.SetSkillshot(0.30f, 80f, 1600f, true, SkillshotType.SkillshotLine);
-            E = new Spell(SpellSlot.E, 475);
-            R = new Spell(SpellSlot.R, 1400);
+            W = new Spell(SpellSlot.W, 1000f, TargetSelector.DamageType.Physical) { MinHitChance = HitChance.High };
+            W.SetSkillshot(0.30f, 55f, 1600f, true, SkillshotType.SkillshotLine);
 
-            xPassiveUsedTime = Game.Time;
+            wNoCollision = new Spell(SpellSlot.W, 1000f, TargetSelector.DamageType.Physical);
+            wNoCollision.SetSkillshot(0.30f, 55f, 1600f, false, SkillshotType.SkillshotLine);
 
-            Obj_AI_Base.OnProcessSpellCast += Game_OnProcessSpell;
+            E = new Spell(SpellSlot.E, 475f);
 
+            R = new Spell(SpellSlot.R, 1400f);
+
+            Utils.Utils.PrintMessage("Lucian");
         }
 
         public override void Spellbook_OnCastSpell(Spellbook sender, SpellbookCastSpellEventArgs args)
         {
-            if (xAttackLeft == 1)
-            {
-                args.Process = false;
-            }
-            
+                if (args.Slot == SpellSlot.Q || args.Slot == SpellSlot.W || args.Slot == SpellSlot.E ||
+                    args.Slot == SpellSlot.R)
+                {
+                    hasPassive = true;
+                    aaCount = 2;
+                    PassiveStartedTime = Environment.TickCount;
+                }
+
         }
+
+
+        public override void Obj_AI_Base_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
+        {
+            if (!E.IsReady()) return;
+
+            if (args.Target != null && args.Target.IsMe && sender.Type == GameObjectType.obj_AI_Hero && sender.IsEnemy && sender.IsMelee && args.SData.IsAutoAttack())
+                //if (MenuProvider.Champion.Misc.GetBoolValue("Use Anti-Melee (E)"))
+                E.Cast(ObjectManager.Player.Position.Extend(sender.Position, -E.Range));
+        }
+
+        public override void Obj_AI_Base_OnPlayAnimation(Obj_AI_Base sender, GameObjectPlayAnimationEventArgs args)
+        {
+            if (sender.IsMe)
+                if (args.Animation == "Spell1" || args.Animation == "Spell2")
+                    if (Orbwalker.ActiveMode != Orbwalking.OrbwalkingMode.None)
+                        ObjectManager.Player.IssueOrder(GameObjectOrder.MoveTo, Game.CursorPos);
+        }
+
+        public override void Orbwalking_BeforeAttack(Orbwalking.BeforeAttackEventArgs args)
+        {
+            if (!args.Unit.IsMe) return;
+            if (ObjectManager.Player.HasBuff("LucianR"))
+                args.Process = false;
+        }
+
+        public override void Orbwalking_AfterAttack(AttackableUnit unit, AttackableUnit target)
+        {
+            aaCount -= 1;
+            return;
+            if (unit.IsMe)
+            {
+                hasPassive = false;
+
+                switch (Orbwalker.ActiveMode)
+                {
+                    case Orbwalking.OrbwalkingMode.Combo:
+                    {
+                        if (GetValue<bool>("Combo.E.Use"))
+                            if (E.IsReady())
+                                if (ObjectManager.Player.Position.Extend(Game.CursorPos, 700).CountEnemiesInRange(700) <= 1)
+                                    E.Cast(ObjectManager.Player.Position.Extend(Game.CursorPos, 700));
+                        break;
+                    }
+                }
+            }
+        }
+
+        public override void Obj_AI_Base_OnBuffRemove(Obj_AI_Base sender, Obj_AI_BaseBuffRemoveEventArgs args)
+        {
+            if (!sender.IsMe) return;
+            if (args.Buff.Name.ToLower() == "lucianpassivebuff")
+            {
+                hasPassive = false;
+            }
+        }
+
+        public override void AntiGapcloser_OnEnemyGapcloser(ActiveGapcloser gapcloser)
+        {
+            if (GetValue<bool>("Misc.E.Antigapcloser"))
+                if (gapcloser.End.Distance(ObjectManager.Player.Position) <= 200)
+                    if (gapcloser.Sender.IsValidTarget())
+                        if (gapcloser.Sender.ChampionName.ToLowerInvariant() != "masteryi")
+                            if (E.IsReady())
+                                E.Cast(ObjectManager.Player.Position.Extend(gapcloser.Sender.Position, -E.Range));
+        }
+
         public static Obj_AI_Base QMinion(Obj_AI_Hero t)
         {
-            var m = MinionManager.GetMinions(ObjectManager.Player.ServerPosition, Q.Range, MinionTypes.All,
-                MinionTeam.NotAlly, MinionOrderTypes.None);
+            var m = MinionManager.GetMinions(ObjectManager.Player.ServerPosition, Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.None);
 
             return (from vM
                         in m.Where(vM => vM.IsValidTarget(Q.Range))
-                    let endPoint = vM.ServerPosition.To2D().Extend(ObjectManager.Player.ServerPosition.To2D(), -Q2.Range).To3D()
+                    let endPoint = vM.ServerPosition.To2D().Extend(ObjectManager.Player.ServerPosition.To2D(), -qExtended.Range).To3D()
                     where
                         vM.Distance(t) <= t.Distance(ObjectManager.Player) &&
                         Intersection(ObjectManager.Player.ServerPosition.To2D(), endPoint.To2D(), t.ServerPosition.To2D(), vM.BoundingRadius)
-                    //Intersection(ObjectManager.Player.ServerPosition.To2D(), endPoint.To2D(), t.ServerPosition.To2D(), t.BoundingRadius + Q.Width/4)
                     select vM).FirstOrDefault();
-            //get
-            //{
-            //    var vTarget = TargetSelector.GetTarget(Q2.Range, TargetSelector.DamageType.Physical);
-            //    var vMinions = MinionManager.GetMinions(
-            //        ObjectManager.Player.ServerPosition, Q.Range, MinionTypes.All, MinionTeam.NotAlly,
-            //        MinionOrderTypes.None);
-
-            //    return (from vMinion in vMinions.Where(vMinion => vMinion.IsValidTarget(Q.Range))
-            //            let endPoint =
-            //                vMinion.ServerPosition.To2D()
-            //                    .Extend(ObjectManager.Player.ServerPosition.To2D(), -Q2.Range)
-            //                    .To3D()
-            //            where
-            //                vMinion.Distance(vTarget) <= vTarget.Distance(ObjectManager.Player) &&
-            //                Intersection(ObjectManager.Player.ServerPosition.To2D(), endPoint.To2D(),
-            //                    vTarget.ServerPosition.To2D(), vTarget.BoundingRadius + vMinion.BoundingRadius)
-            //            select vMinion).FirstOrDefault();
-            //}
         }
+
         public static bool IsPositionSafeForE(Obj_AI_Hero target, Spell spell)
         {
             var predPos = spell.GetPrediction(target).UnitPosition.To2D();
@@ -117,139 +175,9 @@ namespace Marksman.Champions
             return true;
         }
 
-
-        private static void GetJumpPosition()
-        {
-            foreach (var t in HeroManager.Enemies.Where(e => e.IsValidTarget(2500)))
-            {
-
-                var toPolygon = new CommonGeometry.Rectangle(ObjectManager.Player.Position.To2D(),
-                                             ObjectManager.Player.Position.To2D().Extend(t.Position.To2D(), t.Distance(ObjectManager.Player.Position)),
-                                             E.Range).ToPolygon();
-                toPolygon.Draw(System.Drawing.Color.Red, 1);
-
-
-                //Console.WriteLine(hero.ChampionName);
-
-                for (int j = 20; j < 361; j += 20)
-                {
-                    Vector2 wcPositive = ObjectManager.Player.Position.To2D() + Vector2.Normalize(t.Position.To2D() - ObjectManager.Player.Position.To2D()).Rotated(j * (float)Math.PI / 180) * E.Range;
-                    if (!wcPositive.IsWall() && t.Distance(wcPositive) > E.Range )
-                    Render.Circle.DrawCircle(wcPositive.To3D(), 105f, Color.GreenYellow);
-                    //if (!wcPositive.IsWall())
-                    //{
-                    //    ListWJumpPositions.Add(wcPositive);
-                    //}
-
-                    //Vector2 wcNegative = ObjectManager.Player.Position.To2D() +
-                    //                     Vector2.Normalize(hero.Position.To2D() - ObjectManager.Player.Position.To2D())
-                    //                         .Rotated(-j * (float)Math.PI / 180) * E.Range;
-
-                    //Render.Circle.DrawCircle(wcNegative.To3D(), 105f, Color.White);
-                    //if (!wcNegative.IsWall())
-                    //{
-                    //    ListWJumpPositions.Add(wcNegative);
-                    //}
-                }
-
-
-            }
-
-            //Vector2 location = ObjectManager.Player.Position.To2D() +
-            //                   Vector2.Normalize(t.Position.To2D() - ObjectManager.Player.Position.To2D()) * W.Range;
-            //Vector2 wCastPosition = location;
-
-            ////Render.Circle.DrawCircle(wCastPosition.To3D(), 105f, System.Drawing.Color.Red);
-
-
-            //if (!wCastPosition.IsWall())
-            //{
-            //    xList.Add(wCastPosition);
-            //}
-
-            //if (!wCastPosition.IsWall())
-            //{
-            //    ExistingJumpPositions.Add(new ListJumpPositions
-            //    {
-            //        Position = wCastPosition,
-            //        Name = name
-            //    });
-
-            //    ListWJumpPositions.Add(wCastPosition);
-            //}
-
-            //if (wCastPosition.IsWall())
-            //{
-            //    for (int j = 20; j < 80; j += 20)
-            //    {
-            //        Vector2 wcPositive = ObjectManager.Player.Position.To2D() +
-            //                             Vector2.Normalize(t.Position.To2D() - ObjectManager.Player.Position.To2D())
-            //                                 .Rotated(j * (float)Math.PI / 180) * W.Range;
-            //        if (!wcPositive.IsWall())
-            //        {
-            //            ListWJumpPositions.Add(wcPositive);
-            //        }
-
-            //        Vector2 wcNegative = ObjectManager.Player.Position.To2D() +
-            //                             Vector2.Normalize(t.Position.To2D() - ObjectManager.Player.Position.To2D())
-            //                                 .Rotated(-j * (float)Math.PI / 180) * W.Range;
-            //        if (!wcNegative.IsWall())
-            //        {
-            //            ListWJumpPositions.Add(wcNegative);
-            //        }
-            //    }
-
-            //    float xDiff = ObjectManager.Player.Position.X - t.Position.X;
-            //    float yDiff = ObjectManager.Player.Position.Y - t.Position.Y;
-            //    int angle = (int)(Math.Atan2(yDiff, xDiff) * 180.0 / Math.PI);
-            //}
-
-            ////foreach (var aa in ListWJumpPositions)
-            ////{
-            ////    Render.Circle.DrawCircle(aa.To3D2(), 105f, System.Drawing.Color.White);
-            ////}
-            //var al1 = xList.OrderBy(al => al.Distance(t.Position)).First();
-
-            //var color = System.Drawing.Color.DarkRed;
-            //var width = 4;
-
-            //var startpos = ObjectManager.Player.Position;
-            //var endpos = al1.To3D();
-            //if (startpos.Distance(endpos) > 100)
-            //{
-            //    var endpos1 = al1.To3D() +
-            //                  (startpos - endpos).To2D().Normalized().Rotated(25 * (float)Math.PI / 180).To3D() * 75;
-            //    var endpos2 = al1.To3D() +
-            //                  (startpos - endpos).To2D().Normalized().Rotated(-25 * (float)Math.PI / 180).To3D() * 75;
-
-            //    //var x1 = new LeagueSharp.Common.Geometry.Polygon.Line(startpos, endpos);
-            //    //x1.Draw(color, width - 2);
-            //    new LeagueSharp.Common.Geometry.Polygon.Line(startpos, endpos).Draw(color, width - 2);
-
-
-            //    var y1 = new LeagueSharp.Common.Geometry.Polygon.Line(endpos, endpos1);
-            //    y1.Draw(color, width - 2);
-            //    var z1 = new LeagueSharp.Common.Geometry.Polygon.Line(endpos, endpos2);
-            //    z1.Draw(color, width - 2);
-            //}
-
-
-            ////foreach (var al in ListWJumpPositions.OrderBy(al => al.Distance(t.Position)))
-            ////{
-            ////    Render.Circle.DrawCircle(al.To3D(), 105f, System.Drawing.Color.White);
-            ////}
-            ////            Render.Circle.DrawCircle(al1.To3D(), 85, System.Drawing.Color.White);
-            //return al1;
-        }
-
         public override void DrawingOnEndScene(EventArgs args)
         {
             return;
-            if (Config.Item("Passive" + Id).GetValue<bool>() && xAttackLeft > 0)
-            {
-                return;
-            }
-
             var nClosesEnemy = HeroManager.Enemies.Find(e => e.IsValidTarget(Orbwalking.GetRealAutoAttackRange(null)));
             if (nClosesEnemy != null)
             {
@@ -362,20 +290,7 @@ namespace Marksman.Champions
 
         }
 
-        public override void Drawing_OnDraw(EventArgs args)
-        {
-            GetJumpPosition();
-            return;
-            Spell[] spellList = { Q, Q2, W, E, R };
-            foreach (var spell in spellList)
-            {
-                var menuItem = GetValue<Circle>("Draw" + spell.Slot);
-                if (!menuItem.Active || spell.Level < 0 && spell.IsReady()) return;
-
-                Render.Circle.DrawCircle(ObjectManager.Player.Position, spell.Range, menuItem.Color);
-            }
-        }
-
+    
         public static bool Intersection(Vector2 p1, Vector2 p2, Vector2 pC, float radius)
         {
             var p3 = new Vector2(pC.X + radius, pC.Y + radius);
@@ -390,110 +305,71 @@ namespace Marksman.Champions
             return d > 0;
         }
 
-        public void Game_OnProcessSpell(Obj_AI_Base unit, GameObjectProcessSpellCastEventArgs spell)
+        public override void ExecuteCombo()
         {
-            if (!unit.IsMe || spell.SData.Name.Contains("summoner") || !Config.Item("Passive" + Id).GetValue<bool>())
+            var t =
+                HeroManager.Enemies.Find(
+                    e => e.IsValidTarget(Orbwalking.GetRealAutoAttackRange(null) + 65) && e.CanGetDamage());
+
+            if (hasPassive && t != null)
             {
-                return;
+                Orbwalker.ForceTarget(t);
             }
 
-            //if (spell.Slot == SpellSlot.E || spell.Slot == SpellSlot.W || spell.Slot == SpellSlot.E || spell.Slot == SpellSlot.R)
-            if (spell.SData.Name.ToLower().Contains("lucianq") || spell.SData.Name.ToLower().Contains("lucianw") ||
-                spell.SData.Name.ToLower().Contains("luciane") || spell.SData.Name.ToLower().Contains("lucianr"))
+            if (!hasPassive && t.IsValidTarget() && Q.IsReady())
             {
-                xAttackLeft = 1;
-                xPassiveUsedTime = Game.Time;
+                Q.CastOnUnit(t);
             }
 
-            if (spell.SData.Name.ToLower().Contains("lucianpassiveattack"))
+            if (GetValue<bool>("Combo.W.Use") && !hasPassive && t.IsValidTarget() && W.IsReady())
             {
-                Utility.DelayAction.Add(500, () => { xAttackLeft -= 1; });
-            }
-        }
-
-        public override void Game_OnUpdate(EventArgs args)
-        {
-            if (ObjectManager.Player.IsDead)
-            {
-                xAttackLeft = 0;
-                return;
+                W.Cast(t.Position);
             }
 
-            if (Game.Time > xPassiveUsedTime + 3 && xAttackLeft == 1)
+            if (t.IsValidTarget() && GetValue<bool>("Combo.E.Use") && E.IsReady() && !hasPassive)
             {
-                xAttackLeft = 0;
+                    var x = CommonUtils.GetDashPosition(E, t, 200);
+                    E.Cast(x);
             }
 
-            if (Config.Item("Passive" + Id).GetValue<bool>() && xAttackLeft > 0)
+            if (!t.IsValidTarget() && t.IsValidTarget(qExtended.Range))
             {
-                return;
-            }
-            
-            Obj_AI_Hero t;
-
-            if (Q.IsReady() && GetValue<KeyBind>("UseQTH").Active && ToggleActive)
-            {
-                if (ObjectManager.Player.HasBuff("Recall"))
-                    return;
-
-                t = TargetSelector.GetTarget(Q.Range, TargetSelector.DamageType.Physical);
-                if (t != null)
-                    Q.CastOnUnit(t);
-            }
-
-
-            if (Q.IsReady() && GetValue<KeyBind>("UseQExtendedTH").Active && ToggleActive)
-            {
-                if (ObjectManager.Player.HasBuff("Recall"))
-                    return;
-
-                t = TargetSelector.GetTarget(Q.Range, TargetSelector.DamageType.Physical);
-                if (t.IsValidTarget() && QMinion(t).IsValidTarget())
+                var useQExtended = GetValue<StringList>("UseQExtendedC").SelectedIndex;
+                if (useQExtended != 0)
                 {
-                    if (ObjectManager.Player.Distance(t) > Q.Range)
-                        Q.CastOnUnit(QMinion(t));
-                }
-            }
-
-
-            if ((!ComboActive && !HarassActive))
-            {
-                return;
-            }
-
-            var useQExtended = GetValue<StringList>("UseQExtendedC").SelectedIndex;
-            if (useQExtended != 0)
-            {
-                switch (useQExtended)
-                {
-                    case 1:
+                    switch (useQExtended)
+                    {
+                        case 1:
                         {
-                            t = TargetSelector.GetTarget(Q2.Range, TargetSelector.DamageType.Physical);
                             var tx = QMinion(t);
-                            if (tx.IsValidTarget())
+                            if (tx.IsValidTarget(Q.Range))
                             {
-                                if (!Orbwalking.InAutoAttackRange(t))
-                                    Q.CastOnUnit(tx);
+                                Q.CastOnUnit(tx);
                             }
                             break;
                         }
 
-                    case 2:
-                    {
-                        var enemy = HeroManager.Enemies.Find(e => e.IsValidTarget(Q2.Range) && !e.IsZombie);
-                        if (enemy != null)
+                        case 2:
                         {
-                            var tx = QMinion(enemy);
-                            if (tx.IsValidTarget())
+                            var enemy = HeroManager.Enemies.Find(e => e.IsValidTarget(qExtended.Range) && !e.IsZombie);
+                            if (enemy != null)
                             {
-                                Q.CastOnUnit(tx);
+                                var tx = QMinion(enemy);
+                                if (tx.IsValidTarget())
+                                {
+                                    Q.CastOnUnit(tx);
+                                }
                             }
+                            break;
                         }
-                        break;
                     }
                 }
             }
+        }
 
+        public override void GameOnUpdate(EventArgs args)
+        {
+            return;
             // Auto turn off Ghostblade Item if Ultimate active
             if (ObjectManager.Player.Spellbook.GetSpell(SpellSlot.R).Level > 0)
             {
@@ -503,83 +379,36 @@ namespace Marksman.Champions
 
             //if (useQExtended && Q.IsReady())
             //{
-            //    var t = TargetSelector.GetTarget(Q2.Range, TargetSelector.DamageType.Physical);
+            //    var t = TargetSelector.GetTarget(qExtended.Range, TargetSelector.DamageType.Physical);
             //    if (t.IsValidTarget() && QMinion.IsValidTarget())
             //    {
             //        if (!Orbwalking.InAutoAttackRange(t))
             //            Q.CastOnUnit(QMinion);
             //    }
             //}
-
-            t = TargetSelector.GetTarget(W.Range, TargetSelector.DamageType.Physical);
-            if (!t.IsValidTarget())
-            {
-                return;
-            }
-
-            var useQ = GetValue<bool>("UseQC");
-            if (useQ && Q.IsReady())
-            {
-                if (t.IsValidTarget(Q.Range))
-                {
-                    Q.CastOnUnit(t);
-                    //Orbwalking.ResetAutoAttackTimer();
-                }
-            }
-
-            var useW = GetValue<bool>("UseWC");
-            if (useW && W.CanCast(t))
-            {
-                if (t.Health <= W.GetDamage(t) || t.IsValidTarget(Orbwalking.GetRealAutoAttackRange(null) + 65))
-                {
-                    W.Cast(t.Position);
-                }
-            }
-
-            var useE = GetValue<StringList>("UseEC").SelectedIndex;
-            if (useE != 0 && E.IsReady())
-            {
-                if (t.Distance(ObjectManager.Player.Position) > Orbwalking.GetRealAutoAttackRange(null) 
-                    && t.IsValidTarget(Orbwalking.GetRealAutoAttackRange(null) + E.Range - 100) && E.IsPositionSafe(t.Position.To2D()))
-                {
-                    E.Cast(t.Position);
-                    //Orbwalking.ResetAutoAttackTimer();
-                }
-                else if (E.IsPositionSafe(Game.CursorPos.To2D()))
-                {
-                    E.Cast(Game.CursorPos);
-                    //Orbwalking.ResetAutoAttackTimer();
-                }
-                //Orbwalker.ForceTarget(t);
-
-                //if (t.IsValidTarget(Q.Range))
-                //{
-                //    E.Cast(Game.CursorPos);
-                //}
-            }
         }
 
-        public override void ExecuteLaneClear()
+        public override void ExecuteLane()
         {
             int laneQValue = GetValue<StringList>("Lane.UseQ").SelectedIndex;
             if (laneQValue != 0)
             {
                 var minion = Q.GetLineCollisionMinions(laneQValue);
-                if (minion != null)
+                if (minion != null && !hasPassive)
                 {
                     Q.CastOnUnit(minion);
                 }
 
                 var allMinions = MinionManager.GetMinions(ObjectManager.Player.Position, Q.Range, MinionTypes.All, MinionTeam.NotAlly);
                 minion = allMinions.FirstOrDefault(minionn => minionn.Distance(ObjectManager.Player.Position) <= Q.Range && HealthPrediction.LaneClearHealthPrediction(minionn, (int)Q.Delay * 2) > 0);
-                if (minion != null)
+                if (minion != null && !hasPassive)
                 {
                     Q.CastOnUnit(minion);
                 }
             }
 
             int laneWValue = GetValue<StringList>("Lane.UseW").SelectedIndex;
-            if (laneWValue != 0 && E.IsReady())
+            if (laneWValue != 0 && W.IsReady() && !hasPassive)
             {
                 Vector2 minions = W.GetLineFarmMinions(laneWValue);
                 if (minions != Vector2.Zero)
@@ -589,23 +418,23 @@ namespace Marksman.Champions
             }
         }
 
-        public override void ExecuteJungleClear()
+        public override void ExecuteJungle()
         {
             var jungleQValue = GetValue<StringList>("Jungle.UseQ").SelectedIndex;
             if (jungleQValue != 0 && Q.IsReady())
             {
                 var bigMobsQ = Utils.Utils.GetMobs(Q.Range, jungleQValue == 2 ? Utils.Utils.MobTypes.BigBoys : Utils.Utils.MobTypes.All);
-                if (bigMobsQ != null && bigMobsQ.Health > ObjectManager.Player.TotalAttackDamage * 2)
+                if (bigMobsQ != null && bigMobsQ.Health > ObjectManager.Player.TotalAttackDamage * 2 && !hasPassive)
                 {
                     Q.CastOnUnit(bigMobsQ);
                 }
             }
 
-            var jungleWValue = GetValue<StringList>("Jungle.UseQ").SelectedIndex;
+            var jungleWValue = GetValue<StringList>("Jungle.UseW").SelectedIndex;
             if (jungleWValue != 0 && W.IsReady())
             {
                 var bigMobsQ = Utils.Utils.GetMobs(W.Range, jungleWValue == 2 ? Utils.Utils.MobTypes.BigBoys : Utils.Utils.MobTypes.All);
-                if (bigMobsQ != null && bigMobsQ.Health > ObjectManager.Player.TotalAttackDamage * 2)
+                if (bigMobsQ != null && bigMobsQ.Health > ObjectManager.Player.TotalAttackDamage * 2 && !hasPassive)
                 {
                     W.Cast(bigMobsQ.Position);
                 }
@@ -618,7 +447,7 @@ namespace Marksman.Champions
                     Marksman.Utils.Utils.GetMobs(Q.Range + Orbwalking.GetRealAutoAttackRange(null) + 65,
                         Marksman.Utils.Utils.MobTypes.All);
 
-                if (jungleMobs != null)
+                if (jungleMobs != null && !hasPassive)
                 {
                     switch (GetValue<StringList>("Jungle.UseE").SelectedIndex)
                     {
@@ -664,6 +493,9 @@ namespace Marksman.Champions
 
         private static float GetRTotalDamage(Obj_AI_Hero t)
         {
+            if (!R.IsReady())
+                return 0f;
+
             var baseAttackSpeed = 0.638;
             var wCdTime = 3;
             var passiveDamage = 0;
@@ -688,22 +520,24 @@ namespace Marksman.Champions
         {
             config.AddItem(new MenuItem("UseQC" + Id, "Q:").SetValue(true));
             config.AddItem(new MenuItem("UseQExtendedC" + Id, "Q Extended:").SetValue(new StringList(new[] { "Off", "Use for Selected Target", "Use for Any Target" }, 1)));
-            config.AddItem(new MenuItem("UseWC" + Id, "W:").SetValue(true));
-            config.AddItem(new MenuItem("UseEC" + Id, "E:").SetValue(new StringList(new []{ "Off", "On", "On: Protect AA Range" }, 2)));
+            config.AddItem(new MenuItem("Combo.W.Use" + Id, "W:").SetValue(true));
+            //config.AddItem(new MenuItem("Combo.E.Use" + Id, "E:").SetValue(new StringList(new []{ "Off", "On", "On: Protect AA Range" }, 2)));
+            config.AddItem(new MenuItem("Combo.E.Use" + Id, "E:").SetValue(true));
             //config.AddItem(new MenuItem("UseRC" + Id, "E:").SetValue(true));
             return true;
         }
 
         public override bool HarassMenu(Menu config)
         {
-            config.AddItem(new MenuItem("UseQTH" + Id, "Use Q (Toggle)").SetValue(new KeyBind("T".ToCharArray()[0], KeyBindType.Toggle)));
-            config.AddItem(new MenuItem("UseQExtendedTH" + Id, "Use Ext. Q (Toggle)").SetValue(new KeyBind("H".ToCharArray()[0], KeyBindType.Toggle)));
+            config.AddItem(new MenuItem("UseQTH" + Id, "Use Q (Toggle)").SetValue(new KeyBind("T".ToCharArray()[0], KeyBindType.Toggle))).Permashow(true);
+            config.AddItem(new MenuItem("UseQExtendedTH" + Id, "Use Ext. Q (Toggle)").SetValue(new KeyBind("H".ToCharArray()[0], KeyBindType.Toggle))).Permashow(true);
             return true;
         }
 
         public override bool MiscMenu(Menu config)
         {
             config.AddItem(new MenuItem("Passive" + Id, "Check Passive").SetValue(true));
+            config.AddItem(new MenuItem("Misc.E.Antigapcloser" + Id, "E: Antigapcloser").SetValue(true));
             return true;
         }
 
@@ -720,15 +554,43 @@ namespace Marksman.Champions
             
             //Utility.HpBarDamageIndicator.DamageToUnit = GetComboDamage;
             Utility.HpBarDamageIndicator.Enabled = dmgAfterComboItem.GetValue<bool>();
-            dmgAfterComboItem.ValueChanged += delegate (object sender, OnValueChangeEventArgs eventArgs)
-            {
-                Utility.HpBarDamageIndicator.Enabled = eventArgs.GetNewValue<bool>();
-            };
-            
+            dmgAfterComboItem.ValueChanged +=
+                (sender, args) => { Utility.HpBarDamageIndicator.Enabled = args.GetNewValue<bool>(); };
             return true;
         }
 
-        public override bool LaneClearMenu(Menu config)
+        public override void Drawing_OnDraw(EventArgs args)
+        {
+            var t = TargetSelector.GetTarget(R.Range, TargetSelector.DamageType.Physical);
+            if (t.IsValidTarget())
+            {
+                var toPolygon = new CommonGeometry.Rectangle(ObjectManager.Player.Position.To2D(), ObjectManager.Player.Position.To2D().Extend(t.Position.To2D(), R.Range), 80).ToPolygon();
+                toPolygon.Draw(System.Drawing.Color.Red, 1);
+            }
+
+            var enemyCount =
+                HeroManager.Enemies.Where(e => e.Distance(ObjectManager.Player) < 1100 && e.IsValidTarget(1100))
+                    .Count(e => e.NetworkId != t.NetworkId && !e.IsDead && toPolygon.IsInside(e.ServerPosition));
+
+
+            foreach (var e in HeroManager.Enemies.Where(e => e.IsValidTarget(R.Range * 2)))
+            {
+                var heropos = Drawing.WorldToScreen(e.Position);
+                Drawing.DrawText(heropos.X, heropos.Y, Color.Red, GetRTotalDamage(e).ToString(CultureInfo.InvariantCulture));
+            }
+
+            Spell[] spellList = { Q, qExtended, W, E, R };
+            foreach (var spell in spellList)
+            {
+                var menuItem = GetValue<Circle>("Draw" + spell.Slot);
+                if (!menuItem.Active || spell.Level < 0 && spell.IsReady()) return;
+
+                Render.Circle.DrawCircle(ObjectManager.Player.Position, spell.Range, menuItem.Color);
+            }
+        }
+
+
+        public override bool LaneClearMenu(Menu menuLane)
         {
             string[] strQ = new string[5];
             strQ[0] = "Off";
@@ -738,8 +600,8 @@ namespace Marksman.Champions
                 strQ[i] = "Minion Count >= " + i;
             }
 
-            config.AddItem(new MenuItem("Lane.UseQ" + Id, "Q:").SetValue(new StringList(strQ, 3))).SetFontStyle(FontStyle.Regular, Q.MenuColor());
-            config.AddItem(new MenuItem("Lane.UseQ2" + Id, "Q Extended:").SetValue(new StringList(new[] { "Off", "Out of AA Range" }, 1))).SetFontStyle(FontStyle.Regular, Q.MenuColor());
+            menuLane.AddItem(new MenuItem("Lane.UseQ" + Id, "Q:").SetValue(new StringList(strQ, 3))).SetFontStyle(FontStyle.Regular, Q.MenuColor());
+            menuLane.AddItem(new MenuItem("Lane.UseQ2" + Id, "Q Extended:").SetValue(new StringList(new[] { "Off", "Out of AA Range" }, 1))).SetFontStyle(FontStyle.Regular, Q.MenuColor());
 
             string[] strW = new string[5];
             strW[0] = "Off";
@@ -749,9 +611,9 @@ namespace Marksman.Champions
                 strW[i] = "Minion Count >= " + i;
             }
 
-            config.AddItem(new MenuItem("Lane.UseW" + Id, "W:").SetValue(new StringList(strW, 3))).SetFontStyle(FontStyle.Regular, W.MenuColor());
+            menuLane.AddItem(new MenuItem("Lane.UseW" + Id, "W:").SetValue(new StringList(strW, 3))).SetFontStyle(FontStyle.Regular, W.MenuColor());
 
-            config.AddItem(new MenuItem("Lane.UseE" + Id, "E:").SetValue(new StringList(new[] { "Off", "Under Ally Turrent Farm", "Out of AA Range", "Both" }, 1))).SetFontStyle(FontStyle.Regular, E.MenuColor());
+            menuLane.AddItem(new MenuItem("Lane.UseE" + Id, "E:").SetValue(new StringList(new[] { "Off", "Under Ally Turrent Farm", "Out of AA Range", "Both" }, 1))).SetFontStyle(FontStyle.Regular, E.MenuColor());
 
 
             string[] strR = new string[4];
@@ -761,79 +623,34 @@ namespace Marksman.Champions
             {
                 strR[i] = "Minion Count >= Ulti Attack Count x " + i.ToString();
             }
-            config.AddItem(new MenuItem("Lane.UseR" + Id, "R:").SetValue(new StringList(strR, 2))).SetFontStyle(FontStyle.Regular, R.MenuColor());
+            menuLane.AddItem(new MenuItem("Lane.UseR" + Id, "R:").SetValue(new StringList(strR, 2))).SetFontStyle(FontStyle.Regular, R.MenuColor());
 
 
             return true;
         }
 
-        public override bool JungleClearMenu(Menu config)
+        public override bool JungleClearMenu(Menu menuJungle)
         {
-            config.AddItem(new MenuItem("Jungle.UseQ" + Id, "Q:").SetValue(new StringList(new[] { "Off", "On", "Just big Monsters" }, 2)));
-            config.AddItem(new MenuItem("Jungle.UseW" + Id, "W:").SetValue(new StringList(new[] { "Off", "On", "Just big Monsters" }, 2)));
-            config.AddItem(new MenuItem("Jungle.UseE" + Id, "E:").SetValue(new StringList(new[] { "Off", "On", "Just big Monsters" }, 2)));
+            menuJungle.AddItem(new MenuItem("Jungle.UseQ" + Id, "Q:").SetValue(new StringList(new[] { "Off", "On", "Just big Monsters" }, 2)));
+            menuJungle.AddItem(new MenuItem("Jungle.UseW" + Id, "W:").SetValue(new StringList(new[] { "Off", "On", "Just big Monsters" }, 2)));
+            menuJungle.AddItem(new MenuItem("Jungle.UseE" + Id, "E:").SetValue(new StringList(new[] { "Off", "On", "Just big Monsters" }, 2)));
 
             return true;
-        }
-
-        private bool LucianHavePassiveBuff()
-        {
-            return ObjectManager.Player.Buffs.Any(buff => buff.DisplayName == "LucianPassive");
         }
 
         public override void PermaActive()
         {
-            if (!ComboActive)
+            if (aaCount <= 0)
             {
-                return;
+                hasPassive = false;
+            }
+            if (Environment.TickCount > PassiveStartedTime + 3000)
+            {
+                hasPassive = false;
+                aaCount = 0;
             }
 
-            if (ComboActive && GetValue<StringList>("UseEC").SelectedIndex == 2 && E.IsReady())
-            {
-                var nRange = ObjectManager.Player.HealthPercent < 25 ? 550 : 450;
-                var nSum = HeroManager.Enemies.Where(e => e.IsValidTarget(nRange) && e.IsFacing(ObjectManager.Player)).Sum(e => e.HealthPercent);
-                if (nSum > ObjectManager.Player.HealthPercent)
-                {
-                    var nResult = HeroManager.Enemies.FirstOrDefault(e => e.IsValidTarget(nRange));
-                    if (nResult != null)
-                    {
-                        var nPosition = ObjectManager.Player.Position.Extend(nResult.Position, -E.Range);
-                        E.Cast(nPosition);
-                    }
-                }
-                Render.Circle.DrawCircle(ObjectManager.Player.Position, nRange, Color.DarkSalmon);
-            }
-
-
-            var enemy = HeroManager.Enemies.Find(e => e.IsValidTarget(E.Range + (Q.IsReady() ? Q.Range : Orbwalking.GetRealAutoAttackRange(null) + 65)) && !e.IsZombie);
-            if (enemy != null)
-            {
-                if (enemy.Health < ObjectManager.Player.TotalAttackDamage*2 && !LucianHavePassiveBuff() && enemy.IsValidTarget(Orbwalking.GetRealAutoAttackRange(null) + 65) && !Q.IsReady())
-                {
-                    if (W.IsReady() && GetValue<bool>("UseWC"))
-                    {
-                        W.Cast(enemy.Position);
-                    }
-                    else if (E.IsReady() && GetValue<StringList>("UseEC").SelectedIndex == 1)
-                    {
-                        E.Cast(enemy.Position);
-                    }
-                }
-
-                var xPossibleComboDamage = 0f;
-                xPossibleComboDamage += Q.IsReady() ? Q.GetDamage(enemy) + ObjectManager.Player.TotalAttackDamage * 2 : 0;
-                xPossibleComboDamage += E.IsReady() ? ObjectManager.Player.TotalAttackDamage * 2 : 0;
-
-                if (enemy.Health < xPossibleComboDamage)
-                {
-//                    if (enemy.Distance(ObjectManager.Player) > Orbwalking.GetRealAutoAttackRange(null) + 65))
-                }
-
-                if (E.IsReady() && Q.IsReady() && GetValue<StringList>("UseEC").SelectedIndex == 1)
-                {
-                    E.Cast(enemy.Position);
-                }
-            }
+            base.PermaActive();
         }
     }
 }

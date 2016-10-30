@@ -45,7 +45,7 @@ namespace Marksman.Champions
             GameObject.OnDelete += OnDeleteObject;
             AntiGapcloser.OnEnemyGapcloser += OnEnemyGapcloser;
             Interrupter2.OnInterruptableTarget += Interrupter2_OnInterruptableTarget;
-            Utils.Utils.PrintMessage("Draven loaded.");
+            Utils.Utils.PrintMessage("Draven");
         }
 
         public override void DrawingOnEndScene(EventArgs args)
@@ -92,7 +92,7 @@ namespace Marksman.Champions
             }
         }
 
-        private void Interrupter2_OnInterruptableTarget(Obj_AI_Hero unit, Interrupter2.InterruptableTargetEventArgs args)
+        public override void Interrupter2_OnInterruptableTarget(Obj_AI_Hero unit, Interrupter2.InterruptableTargetEventArgs args)
         {
             if (E.IsReady() && Config.Item("EInterruptable").GetValue<bool>() && unit.IsValidTarget(E.Range))
             {
@@ -185,18 +185,18 @@ namespace Marksman.Champions
             }
         }
 
-        public override void Game_OnUpdate(EventArgs args)
+        public override void GameOnUpdate(EventArgs args)
         {
             var orbwalkPos = GetOrbwalkPos();
             var cursor = Game.CursorPos;
             if (orbwalkPos != cursor &&
                 (ComboActive || LaneClearActive || Orbwalker.ActiveMode == Orbwalking.OrbwalkingMode.LastHit))
             {
-                Orbwalker.SetMarksmanOrbwalkingPoint(orbwalkPos);
+                Orbwalker.SetOrbwalkingPoint(orbwalkPos);
             }
             else
             {
-                Orbwalker.SetMarksmanOrbwalkingPoint(cursor);
+                Orbwalker.SetOrbwalkingPoint(cursor);
             }
 
             Obj_AI_Hero t;
@@ -353,11 +353,11 @@ namespace Marksman.Champions
                    Vector3.DistanceSquared(hero.Position, position.CastPosition);
         }
 
-        public override bool LaneClearMenu(Menu config)
+        public override bool LaneClearMenu(Menu menuLane)
         {
             return true;
         }
-        public override bool JungleClearMenu(Menu config)
+        public override bool JungleClearMenu(Menu menuJungle)
         {
             return true;
         }

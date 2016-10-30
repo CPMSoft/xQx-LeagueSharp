@@ -1,6 +1,7 @@
 #region
 
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using LeagueSharp;
@@ -8,6 +9,7 @@ using LeagueSharp.Common;
 using Marksman.Utils;
 using Marksman.Common;
 using SharpDX;
+using Collision = LeagueSharp.Common.Collision;
 using Orbwalking = Marksman.Orb.Orbwalking;
 
 #endregion
@@ -17,16 +19,19 @@ namespace Marksman.Champions
     internal class Jinx : Champion
     {
         public static Spell Q, W, E, R;
-
+        private int wCastTime;
+        private Obj_AI_Minion aMinion;
         public Jinx()
         {
             Q = new Spell(SpellSlot.Q);
-            W = new Spell(SpellSlot.W, 1450f);
-            E = new Spell(SpellSlot.E, 900f);
-            R = new Spell(SpellSlot.R, 25000f);
 
+            W = new Spell(SpellSlot.W, 1450f);
             W.SetSkillshot(0.6f, 60f, 3300f, true, SkillshotType.SkillshotLine);
-            E.SetSkillshot(0.7f, 120f, 1750f, false, SkillshotType.SkillshotCircle);
+
+            E = new Spell(SpellSlot.E, 900f);
+            E.SetSkillshot(1.1f, 1f, 1750f, false, SkillshotType.SkillshotCircle);
+
+            R = new Spell(SpellSlot.R, 4000f);
             R.SetSkillshot(0.6f, 140f, 1700f, false, SkillshotType.SkillshotLine);
             
             Obj_AI_Base.OnBuffAdd += (sender, args) =>
@@ -41,33 +46,76 @@ namespace Marksman.Champions
                                  && sender.Distance(ObjectManager.Player.Position) < E.Range)
                          from b in new[]
                                            {
-                                               "teleport_", /* Teleport */ "pantheon_grandskyfall_jump", /* Pantheon */ 
-                                               "crowstorm", /* FiddleScitck */
-                                               "zhonya", "katarinar", /* Katarita */
-                                               "MissFortuneBulletTime", /* MissFortune */
-                                               "gate", /* Twisted Fate */
-                                               "chronorevive" /* Zilean */
+                                                "teleport_", /* Teleport */
+                                                "pantheon_grandskyfall_jump", /* Pantheon */ 
+                                                "crowstorm", /* FiddleScitck */
+                                                "zhonya", "katarinar", /* Katarita */
+                                                "MissFortuneBulletTime", /* MissFortune */
+                                                "gate", /* Twisted Fate */
+                                                "chronorevive" /* Zilean */
                                            }
                          where args.Buff.Name.ToLower().Contains(b)
                          select fBuffs).FirstOrDefault();
 
-                    if (aBuff != null)
+                    if (aBuff != null && aBuff.StartTime + CommonUtils.GetRandomDelay(1000, 1500) <= Game.Time)
                     {
                         E.Cast(sender.Position);
                     }
                 }
             };
+
             Utility.HpBarDamageIndicator.DamageToUnit = GetComboDamage;
             Utility.HpBarDamageIndicator.Enabled = true;
 
-            Utils.Utils.PrintMessage("Jinx loaded.");
+            Utils.Utils.PrintMessage("Jinx");
         }
+
+        public override void Orbwalking_BeforeAttack(Orbwalking.BeforeAttackEventArgs args)
+        {
+            /*
+            var minion = args.Target as Obj_AI_Minion;
+            if (minion != null && LaneClearActive)
+            {
+                var mobs =
+                    MinionManager.GetMinions(ObjectManager.Player.Position, Orbwalking.GetRealAutoAttackRange(null) + 65,
+                        MinionTypes.All, MinionTeam.Enemy).Count(m => m.Distance(minion) < 155);
+                if (mobs < 2 && FishBoneActive)
+                {
+                    args.Process = false;
+                    Q.Cast();
+                }
+            }
+            */
+        }
+
+        public override void AntiGapcloser_OnEnemyGapcloser(ActiveGapcloser gapcloser)
+        {
+            if (!E.IsReady()) return;
+            if (gapcloser.End.Distance(ObjectManager.Player.Position) <= 200)
+                E.Cast(gapcloser.End);
+        }
+
+
+        public override void Interrupter2_OnInterruptableTarget(Obj_AI_Hero sender, Interrupter2.InterruptableTargetEventArgs args)
+        {
+            if (!E.IsReady()) return;
+            if (args.DangerLevel >= Interrupter2.DangerLevel.Medium)
+                E.Cast(sender);
+        }
+
+        public override void Obj_AI_Base_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
+        {
+            if (!sender.IsMe) return;
+            if (args.Slot == SpellSlot.W)
+                wCastTime = Environment.TickCount;
+        }
+
 
         private static float GetComboDamage(Obj_AI_Hero t)
         {
             var fComboDamage = 0f;
 
-            fComboDamage += R.IsReady() ? R.GetDamage(t) : 0;
+            fComboDamage += (float) GetRDamage(t);
 
             if (ObjectManager.Player.GetSpellSlot("summonerdot") != SpellSlot.Unknown
                 && ObjectManager.Player.Spellbook.CanUseSpell(ObjectManager.Player.GetSpellSlot("summonerdot"))
@@ -81,11 +129,11 @@ namespace Marksman.Champions
         }
 
 
-        public float QAddRange => 50 + 25 * ObjectManager.Player.Spellbook.GetSpell(SpellSlot.Q).Level;
+        public float QExtraRange => 50 + 25 * ObjectManager.Player.Spellbook.GetSpell(SpellSlot.Q).Level;
 
-        private static bool FishBoneActive => ObjectManager.Player.AttackRange > 565f;
+        private bool FishBoneActive => ObjectManager.Player.AttackRange > 565f;
 
-        private static int PowPowStacks
+        private int PowPowStacks
         {
             get
             {
@@ -98,7 +146,10 @@ namespace Marksman.Champions
 
         public override void Drawing_OnDraw(EventArgs args)
         {
-
+            if (aMinion != null)
+                Render.Circle.DrawCircle(aMinion.Position, 50f, System.Drawing.Color.Red);
+            Render.Circle.DrawCircle(ObjectManager.Player.Position, 125, System.Drawing.Color.Red);
+            return;
             /*----------------------------------------------------*/
             var drawQbound = GetValue<Circle>("DrawQBound");
             foreach (var spell in new[] { W, E })
@@ -118,34 +169,13 @@ namespace Marksman.Champions
                 }
                 else
                 {
-                    Render.Circle.DrawCircle(ObjectManager.Player.Position, 525f + ObjectManager.Player.BoundingRadius + 65f + QAddRange + 20f, drawQbound.Color);
+                    Render.Circle.DrawCircle(ObjectManager.Player.Position, 525f + ObjectManager.Player.BoundingRadius + 65f + QExtraRange + 20f, drawQbound.Color);
                 }
             }
         }
 
-        public override void Game_OnUpdate(EventArgs args)
+        public override void GameOnUpdate(EventArgs args)
         {
-            //var t1 = TargetSelector.GetTarget(2000, TargetSelector.DamageType.Physical);
-            //if (t1.IsValidTarget())
-            //{
-            //    if (t1.IsFacing(ObjectManager.Player))
-            //    {
-            //        Console.WriteLine("--> Face " + t1.ChampionName);
-            //    }
-            //    else
-            //    {
-            //        Console.WriteLine(t1.ChampionName + " <-- Back");
-            //    }
-            //}
-            /*
-            var x = HeroManager.Enemies.Find(e => !e.IsValidTarget(Orbwalking.GetRealAutoAttackRange(null)) && e.IsValidTarget(Orbwalking.GetRealAutoAttackRange(null) + QAddRange));
-            if (x != null && !FishBoneActive && Q.IsReady())
-            {
-                Q.Cast();
-                Program.ChampionClass.Orbwalker.ForceTarget(x);
-            }
-            */
-
             if (GetValue<bool>("PingCH"))
             {
                 foreach (var enemy in
@@ -159,10 +189,13 @@ namespace Marksman.Champions
 
             if (Q.IsReady() && GetValue<bool>("SwapDistance") && Program.ChampionClass.Orbwalker.ActiveMode == Orbwalking.OrbwalkingMode.Combo)
             {
+
+                var nKillableEnemy = HeroManager.Enemies.Find(e => e.Health <= Q.GetDamage(e)*2 && e.Health >= ObjectManager.Player.TotalAttackDamage*4);
+
                 var activeQ = ObjectManager.Player.Spellbook.GetSpell(SpellSlot.Q).Level * 25 + 650;
                 var t = TargetSelector.GetTarget(activeQ, TargetSelector.DamageType.Physical);
 
-                if (t.IsValidTarget() && ObjectManager.Player.Distance(t) > Orbwalking.GetRealAutoAttackRange(null) + 65)
+                if (t.IsValidTarget() && !t.IsValidTarget(Orbwalking.GetRealAutoAttackRange(null) + 65))
                 {
                     if (!FishBoneActive)
                     {
@@ -171,12 +204,6 @@ namespace Marksman.Champions
                         return;
                     }
                 }
-                if (!t.IsValidTarget() && FishBoneActive)
-                {
-                    Q.Cast();
-                    return;
-                }
-
             }
 
             if (GetValue<bool>("PingCH"))
@@ -185,101 +212,13 @@ namespace Marksman.Champions
                     HeroManager.Enemies.Where(
                         t =>
                         R.IsReady() && t.IsValidTarget() && R.GetDamage(t) > t.Health
-                        && t.Distance(ObjectManager.Player) > Orbwalking.GetRealAutoAttackRange(null) + 65 + QAddRange))
+                        && t.Distance(ObjectManager.Player) > Orbwalking.GetRealAutoAttackRange(null) + 65 + QExtraRange))
                 {
-                 //   Utils.Utils.MPing.Ping(enemy.Position.To2D(), 2, PingCategory.Normal);
+                    Utils.Utils.MPing.Ping(enemy.Position.To2D(), 2, PingCategory.Normal);
                 }
             }
 
-            var autoEi = GetValue<bool>("AutoEI");
-            var autoEs = GetValue<bool>("AutoES");
-            var autoEd = GetValue<bool>("AutoED");
-
-            //foreach (var e in HeroManager.Enemies.Where(e => e.IsValidTarget(E.Range)))
-            //{
-            //    if (E.IsReady()
-            //        && (e.HasBuffOfType(BuffType.Stun) || e.HasBuffOfType(BuffType.Snare)
-            //            || e.HasBuffOfType(BuffType.Charm) || e.HasBuffOfType(BuffType.Fear) ||
-            //            e.HasBuffOfType(BuffType.Slow)
-            //            || e.HasBuffOfType(BuffType.Taunt) || e.HasBuff("zhonyasringshield")
-            //            || e.HasBuff("Recall")))
-            //    {
-            //        E.Cast(e);
-            //    }
-            //}
-
-            if (autoEs || autoEi || autoEd)
-            {
-                foreach (
-                    var enemy in ObjectManager.Get<Obj_AI_Hero>().Where(enemy => enemy.IsValidTarget(E.Range - 50)))
-                {
-                    if (autoEs && E.IsReady() && enemy.HasBuffOfType(BuffType.Slow))
-                    {
-                        var castPosition =
-                            Prediction.GetPrediction(
-                                new PredictionInput
-                                    {
-                                        Unit = enemy, Delay = 0.7f, Radius = 120f, Speed = 1750f, Range = 900f,
-                                        Type = SkillshotType.SkillshotCircle
-                                    }).CastPosition;
-
-
-                        if (GetSlowEndTime(enemy) >= (Game.Time + E.Delay + 0.5f))
-                        {
-                            E.Cast(castPosition);
-                        }
-                    }
-
-                    if (E.IsReady()
-                            && (enemy.HasBuffOfType(BuffType.Stun) 
-                            || enemy.HasBuffOfType(BuffType.Snare)
-                            || enemy.HasBuffOfType(BuffType.Charm) 
-                            || enemy.HasBuffOfType(BuffType.Fear) 
-                            || enemy.HasBuffOfType(BuffType.Slow)
-                            || enemy.HasBuffOfType(BuffType.Taunt) 
-                            || enemy.HasBuff("zhonyasringshield")
-                            || enemy.HasBuff("Recall")))
-                    {
-                        E.CastIfHitchanceEquals(enemy, HitChance.High);
-                    }
-                    else 
-                    if (W.IsReady()
-                            && (enemy.HasBuffOfType(BuffType.Stun)
-                            || enemy.HasBuffOfType(BuffType.Snare)
-                            || enemy.HasBuffOfType(BuffType.Charm)
-                            || enemy.HasBuffOfType(BuffType.Fear)
-                            || enemy.HasBuffOfType(BuffType.Slow)
-                            || enemy.HasBuffOfType(BuffType.Taunt)
-                            || enemy.HasBuff("Recall")))
-                    {
-                        W.CastIfHitchanceEquals(enemy, HitChance.High);
-                    }
-
-                    if (autoEd && E.IsReady() && enemy.IsDashing())
-                    {
-                        E.CastIfHitchanceEquals(enemy, HitChance.Dashing);
-                    }
-                }
-            }
-            
-            if (GetValue<KeyBind>("CastR").Active && R.IsReady())
-            {
-                foreach (var t in HeroManager.Enemies.Where(e => R.GetDamage(e) >= e.Health && e.IsValidTarget(4000)))
-                {
-                    R.CastIfHitchanceGreaterOrEqual(t);
-                }
-
-
-                //var t = TargetSelector.GetTarget(1500, TargetSelector.DamageType.Physical);
-                //if (t.IsValidTarget())
-                //{
-                //    if (ObjectManager.Player.GetSpellDamage(t, SpellSlot.R) > t.Health && !t.IsZombie)
-                //    {
-                //        R.CastIfHitchanceGreaterOrEqual(t);
-                //        //R.CastIfHitchanceEquals(t, HitChance.High, false);
-                //    }
-                //}
-            }
+         
 
             if (GetValue<bool>("SwapQ") && FishBoneActive && !ComboActive)
             {
@@ -291,25 +230,11 @@ namespace Marksman.Champions
                 return;
             }
 
-            var useW = GetValue<bool>("UseW" + (ComboActive ? "C" : "H"));
             var useR = GetValue<bool>("UseRC");
-
-            if (useW && W.IsReady())
-            {
-                var t = TargetSelector.GetTarget(W.Range, TargetSelector.DamageType.Physical);
-                var minW = GetValue<Slider>("MinWRange").Value;
-
-                if (t.IsValidTarget() && !t.HasKindredUltiBuff() && GetRealDistance(t) >= minW)
-                {
-                    W.CastIfHitchanceGreaterOrEqual(t);
-                }
-            }
-            /*
-            if (useQ)
-            {
+            
                 foreach (var t in
                     ObjectManager.Get<Obj_AI_Hero>()
-                        .Where(t => t.IsValidTarget(GetRealPowPowRange(t) + QAddRange + 20f)))
+                        .Where(t => t.IsValidTarget(GetRealPowPowRange(t) + QExtraRange + 20f)))
                 {
                     var swapDistance = GetValue<bool>("SwapDistance");
                     var swapAoe = GetValue<bool>("SwapAOE");
@@ -345,72 +270,71 @@ namespace Marksman.Champions
                         }
                     }
                 }
-            }
 
-            */
-            if (useR && R.IsReady())
-            {
-                var checkRok = GetValue<bool>("ROverKill");
-                var minR = GetValue<Slider>("MinRRange").Value;
-                var maxR = GetValue<Slider>("MaxRRange").Value;
-                var t = TargetSelector.GetTarget(maxR, TargetSelector.DamageType.Physical);
+            
+            //if (useR && R.IsReady())
+            //{
+            //    var checkRok = GetValue<bool>("ROverKill");
+            //    var minR = GetValue<Slider>("MinRRange").Value;
+            //    var maxR = GetValue<Slider>("MaxRRange").Value;
+            //    var t = TargetSelector.GetTarget(maxR, TargetSelector.DamageType.Physical);
 
-                if (t.IsValidTarget() && !t.HasKindredUltiBuff())
-                {
-                    var distance = GetRealDistance(t);
+            //    if (t.IsValidTarget() && !t.HasKindredUltiBuff())
+            //    {
+            //        var distance = GetRealDistance(t);
 
-                    if (!checkRok)
-                    {
-                        if (ObjectManager.Player.GetSpellDamage(t, SpellSlot.R, 1) > t.Health && !t.IsZombie)
-                        {
-                            R.CastIfHitchanceGreaterOrEqual(t);
-                            //R.CastIfHitchanceEquals(t, HitChance.High, false);
-                            //if (R.Cast(t) == Spell.CastStates.SuccessfullyCasted) { }
-                        }
-                    }
-                    else if (distance > minR)
-                    {
-                        var aDamage = ObjectManager.Player.GetAutoAttackDamage(t);
-                        var wDamage = ObjectManager.Player.GetSpellDamage(t, SpellSlot.W);
-                        var rDamage = ObjectManager.Player.GetSpellDamage(t, SpellSlot.R);
-                        var powPowRange = GetRealPowPowRange(t);
+            //        if (!checkRok)
+            //        {
+            //            if (ObjectManager.Player.GetSpellDamage(t, SpellSlot.R, 1) > t.Health && !t.IsZombie)
+            //            {
+            //                R.CastIfHitchanceGreaterOrEqual(t);
+            //                //R.CastIfHitchanceEquals(t, HitChance.High, false);
+            //                //if (R.Cast(t) == Spell.CastStates.SuccessfullyCasted) { }
+            //            }
+            //        }
+            //        else if (distance > minR)
+            //        {
+            //            var aDamage = ObjectManager.Player.GetAutoAttackDamage(t);
+            //            var wDamage = ObjectManager.Player.GetSpellDamage(t, SpellSlot.W);
+            //            var rDamage = ObjectManager.Player.GetSpellDamage(t, SpellSlot.R);
+            //            var powPowRange = GetRealPowPowRange(t);
 
-                        if (distance < (powPowRange + QAddRange) && !(aDamage * 3.5 > t.Health))
-                        {
-                            if (!W.IsReady() || !(wDamage > t.Health) || W.GetPrediction(t).CollisionObjects.Count > 0)
-                            {
-                                if (CountAlliesNearTarget(t, 500) <= 3)
-                                {
-                                    if (rDamage > t.Health && !t.IsZombie /*&& !ObjectManager.Player.IsAutoAttacking &&
-                                        !ObjectManager.Player.IsChanneling*/)
-                                    {
-                                        R.CastIfHitchanceGreaterOrEqual(t);
-                                        //R.CastIfHitchanceEquals(t, HitChance.High, false);
-                                        //if (R.Cast(t) == Spell.CastStates.SuccessfullyCasted) { }
-                                    }
-                                }
-                            }
-                        }
-                        else if (distance > (powPowRange + QAddRange))
-                        {
-                            if (!W.IsReady() || !(wDamage > t.Health) || distance > W.Range
-                                || W.GetPrediction(t).CollisionObjects.Count > 0)
-                            {
-                                if (CountAlliesNearTarget(t, 500) <= 3)
-                                {
-                                    if (rDamage > t.Health && !t.IsZombie /*&& !ObjectManager.Player.IsAutoAttacking &&
-                                        !ObjectManager.Player.IsChanneling*/)
-                                    {
-                                        R.CastIfHitchanceGreaterOrEqual(t);
-                                        //R.CastIfHitchanceEquals(t, HitChance.High, false);
-                                        //if (R.Cast(t) == Spell.CastStates.SuccessfullyCasted) { }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            //            if (distance < (powPowRange + QExtraRange) && !(aDamage * 3.5 > t.Health))
+            //            {
+            //                if (!W.IsReady() || !(wDamage > t.Health) || W.GetPrediction(t).CollisionObjects.Count > 0)
+            //                {
+            //                    if (CountAlliesNearTarget(t, 500) <= 3)
+            //                    {
+            //                        if (rDamage > t.Health && !t.IsZombie /*&& !ObjectManager.Player.IsAutoAttacking &&
+            //                            !ObjectManager.Player.IsChanneling*/)
+            //                        {
+            //                            R.CastIfHitchanceGreaterOrEqual(t);
+            //                            //R.CastIfHitchanceEquals(t, HitChance.High, false);
+            //                            //if (R.Cast(t) == Spell.CastStates.SuccessfullyCasted) { }
+            //                        }
+            //                    }
+            //                }
+            //            }
+            //            else if (distance > (powPowRange + QExtraRange))
+            //            {
+            //                if (!W.IsReady() || !(wDamage > t.Health) || distance > W.Range
+            //                    || W.GetPrediction(t).CollisionObjects.Count > 0)
+            //                {
+            //                    if (CountAlliesNearTarget(t, 500) <= 3)
+            //                    {
+            //                        if (rDamage > t.Health && !t.IsZombie /*&& !ObjectManager.Player.IsAutoAttacking &&
+            //                            !ObjectManager.Player.IsChanneling*/)
+            //                        {
+            //                            R.CastIfHitchanceGreaterOrEqual(t);
+            //                            //R.CastIfHitchanceEquals(t, HitChance.High, false);
+            //                            //if (R.Cast(t) == Spell.CastStates.SuccessfullyCasted) { }
+            //                        }
+            //                    }
+            //                }
+            //            }
+            //        }
+            //    }
+            //}
         }
 
         public override void Orbwalking_AfterAttack(AttackableUnit unit, AttackableUnit target)
@@ -418,24 +342,12 @@ namespace Marksman.Champions
             if ((ComboActive || HarassActive) && unit.IsMe && (target is Obj_AI_Hero))
             {
                 var useQ = GetValue<bool>("UseQ" + (ComboActive ? "C" : "H"));
-                var useW = GetValue<bool>("UseW" + (ComboActive ? "C" : "H"));
-
-                if (useW && W.IsReady())
-                {
-                    var t = TargetSelector.GetTarget(W.Range, TargetSelector.DamageType.Physical);
-                    var minW = GetValue<Slider>("MinWRange").Value;
-
-                    if (t.IsValidTarget() && !t.HasKindredUltiBuff() && GetRealDistance(t) >= minW)
-                    {
-                        W.CastIfHitchanceGreaterOrEqual(t);
-                    }
-                }
 
                 if (useQ)
                 {
                     foreach (var t in
                         ObjectManager.Get<Obj_AI_Hero>()
-                            .Where(t => t.IsValidTarget(GetRealPowPowRange(t) + QAddRange + 20f) && !t.HasKindredUltiBuff()))
+                            .Where(t => t.IsValidTarget(GetRealPowPowRange(t) + QExtraRange + 20f) && !t.HasKindredUltiBuff()))
                     {
                         var swapDistance = GetValue<bool>("SwapDistance");
                         var swapAoe = GetValue<bool>("SwapAOE");
@@ -498,6 +410,7 @@ namespace Marksman.Champions
 
         private static float GetRealPowPowRange(GameObject target)
         {
+            //return Orbwalking.GetRealAutoAttackRange(null) + 65;
             return 525f + ObjectManager.Player.BoundingRadius + target.BoundingRadius;
         }
 
@@ -507,19 +420,14 @@ namespace Marksman.Champions
                    + target.BoundingRadius;
         }
 
-        private static float GetSlowEndTime(Obj_AI_Base target)
-        {
-            return
-                target.Buffs.OrderByDescending(buff => buff.EndTime - Game.Time)
-                    .Where(buff => buff.Type == BuffType.Slow)
-                    .Select(buff => buff.EndTime)
-                    .FirstOrDefault();
-        }
+       
+
 
         public override bool ComboMenu(Menu config)
         {
             config.AddItem(new MenuItem("UseQC" + Id, "Use Q").SetValue(true));
             config.AddItem(new MenuItem("UseWC" + Id, "Use W").SetValue(true));
+            config.AddItem(new MenuItem("UseEC" + Id, "Use E").SetValue(true));
             config.AddItem(new MenuItem("UseRC" + Id, "Use R").SetValue(true));
             config.AddItem(new MenuItem("PingCH" + Id, "Ping Killable Enemy with R").SetValue(true));
             return true;
@@ -529,11 +437,12 @@ namespace Marksman.Champions
         {
             config.AddItem(new MenuItem("UseQH" + Id, "Use Q").SetValue(true));
             config.AddItem(new MenuItem("UseQMH" + Id, "Use Q Nearby Minions").SetValue(true));
+            config.AddItem(new MenuItem("UseEH" + Id, "Use E").SetValue(true));
             config.AddItem(new MenuItem("UseWH" + Id, "Use W").SetValue(false));
             return true;
         }
 
-        public override bool LaneClearMenu(Menu config)
+        public override bool LaneClearMenu(Menu menuLane)
         {
             // Q
             string[] strQ = new string[5];
@@ -544,16 +453,16 @@ namespace Marksman.Champions
                 {
                     strQ[i] = "Minion Count >= " + i;
                 }
-                config.AddItem(new MenuItem("Lane.UseQ" + Id, "Q:").SetValue(new StringList(strQ))).SetFontStyle(FontStyle.Regular, W.MenuColor());
+                menuLane.AddItem(new MenuItem("Lane.UseQ" + Id, "Q:").SetValue(new StringList(strQ))).SetFontStyle(FontStyle.Regular, W.MenuColor());
             }
-            config.AddItem(new MenuItem("Lane.UseQ.Mode" + Id, "Q Mode:").SetValue(new StringList(new[] { "Under Ally Turret", "Out of AA Range", "Botch" }, 2))).SetFontStyle(FontStyle.Regular, Q.MenuColor());
+            menuLane.AddItem(new MenuItem("Lane.UseQ.Mode" + Id, "Q Mode:").SetValue(new StringList(new[] { "Under Ally Turret", "Out of AA Range", "Both" }, 2))).SetFontStyle(FontStyle.Regular, Q.MenuColor());
             
             // W
-            config.AddItem(new MenuItem("Lane.UseW" + Id, "W:").SetValue(new StringList(new[] { "Off", "Out of AA Range" }, 1))).SetFontStyle(FontStyle.Regular, W.MenuColor());
+            menuLane.AddItem(new MenuItem("Lane.UseW" + Id, "W:").SetValue(new StringList(new[] { "Off", "Out of AA Range" }, 1))).SetFontStyle(FontStyle.Regular, W.MenuColor());
             return true;
         }
 
-        public override bool JungleClearMenu(Menu config)
+        public override bool JungleClearMenu(Menu menuJungle)
         {
             // Q
             string[] strQ = new string[4];
@@ -565,14 +474,14 @@ namespace Marksman.Champions
                 {
                     strQ[i] = "Mobs Count >= " + i;
                 }
-                config.AddItem(new MenuItem("Lane.UseQ", "Q:").SetValue(new StringList(strQ, 3))).SetFontStyle(FontStyle.Regular, Q.MenuColor());
+                menuJungle.AddItem(new MenuItem("Lane.UseQ", "Q:").SetValue(new StringList(strQ, 3))).SetFontStyle(FontStyle.Regular, Q.MenuColor());
             }
             
             // W
-            config.AddItem(new MenuItem("Lane.UseW", "W [Just Big Mobs]:").SetValue(new StringList(new[] { "Off", "On", "Just Slows the Mob" }))).SetFontStyle(FontStyle.Regular, W.MenuColor());
+            menuJungle.AddItem(new MenuItem("Lane.UseW", "W [Just Big Mobs]:").SetValue(new StringList(new[] { "Off", "On", "Just Slows the Mob" }))).SetFontStyle(FontStyle.Regular, W.MenuColor());
 
             // R
-            config.AddItem(new MenuItem("Lane.UseR", "R:").SetValue(new StringList(new[] { "Off", "Baron/Dragon Steal"}, 1))).SetFontStyle(FontStyle.Regular, R.MenuColor());
+            menuJungle.AddItem(new MenuItem("Lane.UseR", "R:").SetValue(new StringList(new[] { "Off", "Baron/Dragon Steal"}, 1))).SetFontStyle(FontStyle.Regular, R.MenuColor());
 
             return true;
         }
@@ -583,7 +492,7 @@ namespace Marksman.Champions
             config.AddItem(new MenuItem("SwapDistance" + Id, "Q: Swap for distance").SetValue(true)).SetFontStyle(FontStyle.Regular, Q.MenuColor());
             config.AddItem(new MenuItem("SwapAOE" + Id, "Q: Swap for AOE").SetValue(false)).SetFontStyle(FontStyle.Regular, Q.MenuColor());
             config.AddItem(new MenuItem("MinWRange" + Id, "W: Min. range").SetValue(new Slider(525 + 65 * 2, 0, 1200))).SetFontStyle(FontStyle.Regular, W.MenuColor());
-            config.AddItem(new MenuItem("AutoEI" + Id, "E: on immobile").SetValue(true)).SetFontStyle(FontStyle.Regular, E.MenuColor());
+            config.AddItem(new MenuItem("Misc.UseE.Immobile" + Id, "E: on immobile").SetValue(true)).SetFontStyle(FontStyle.Regular, E.MenuColor());
             config.AddItem(new MenuItem("AutoES" + Id, "E: on slowed").SetValue(true)).SetFontStyle(FontStyle.Regular, E.MenuColor());
             config.AddItem(new MenuItem("AutoED" + Id, "E: on dashing").SetValue(false)).SetFontStyle(FontStyle.Regular, E.MenuColor());
             config.AddItem(new MenuItem("CastR" + Id, "R: (2000 Range)").SetValue(new KeyBind("T".ToCharArray()[0], KeyBindType.Press))).SetFontStyle(FontStyle.Regular, R.MenuColor());
@@ -601,6 +510,91 @@ namespace Marksman.Champions
             config.AddItem(new MenuItem("DrawW" + Id, "W range").SetValue(new Circle(false, System.Drawing.Color.CornflowerBlue)));
             config.AddItem(new MenuItem("DrawCH" + Id, "Draw Killable Enemy with R").SetValue(true));
             return true;
+        }
+
+        public override void ExecuteCombo()
+        {
+            var useE = GetValue<bool>("UseE" + (ComboActive ? "C" : "H"));
+            if (E.IsReady() && useE) // Credits DZ191
+            {
+                var target = HeroManager.Enemies.Find(x => x.IsValidTarget(E.Range));
+                if (target != null)
+                {
+                    if (target.HasBuffOfType(BuffType.Slow))
+                    {
+                        if (target.Path.Count() > 1)
+                        {
+                            var slowEndTime = target.GetSlowEndTime();
+                            if (slowEndTime >= E.Delay + 0.5f + Game.Ping/2f)
+                            {
+                                E.CastIfHitchanceGreaterOrEqual(target);
+                            }
+                        }
+                    }
+
+                    if (target.IsHeavilyImpaired())
+                    {
+                        var immobileEndTime = target.GetImpairedEndTime();
+                        if (immobileEndTime >= E.Delay + 0.5f + Game.Ping / 2f)
+                        {
+                            E.CastIfHitchanceGreaterOrEqual(target);
+                        }
+                    }
+                }
+            }
+            
+            var useW = GetValue<bool>("UseW" + (ComboActive ? "C" : "H"));
+            if (W.IsReady() && useW)
+            {
+                var target = TargetSelector.GetTargetNoCollision(W);
+                if (target == null) return;
+                if (!ObjectManager.Player.UnderTurret(true) || !target.UnderTurret(true))
+                {
+                    W.CastIfHitchanceGreaterOrEqual(target);
+                }
+            }
+
+            if ((GetValue<KeyBind>("CastR").Active || GetValue<bool>("UseRC")) && R.IsReady())
+            {
+                if (wCastTime + 1060 <= Environment.TickCount)
+                {
+                    var target =
+                        HeroManager.Enemies.FirstOrDefault(
+                            x =>
+                                !x.IsZombie && x.CountAlliesInRange(500) < 2 &&
+                                HealthPrediction.GetHealthPrediction(x, 5000) > 0 &&
+                                ObjectManager.Player.Distance(x) >= Orbwalking.GetRealAutoAttackRange(null) + 65 + QExtraRange &&
+                                x.IsKillableAndValidTarget(GetRDamage(x), TargetSelector.DamageType.Physical, R.Range) &&
+                                R.GetPrediction(x).Hitchance >= HitChance.High);
+                    if (target != null)
+                    {
+                        var prediction = R.GetPrediction(target);
+                        var collision =
+                            Collision.GetCollision(new List<Vector3> { prediction.UnitPosition },
+                                new PredictionInput
+                                {
+                                    UseBoundingRadius = true,
+                                    Unit = ObjectManager.Player,
+                                    Delay = R.Delay,
+                                    Speed = R.Speed,
+                                    Radius = 200,
+                                    CollisionObjects = new[] { CollisionableObjects.Heroes }
+                                })
+                                .Any(x => x.NetworkId != target.NetworkId);
+                        if (!collision)
+                            R.Cast(target);
+                    }
+                }
+            }
+            base.ExecuteCombo();
+        }
+
+        private static double GetRDamage(Obj_AI_Base target)
+        {
+            return ObjectManager.Player.CalcDamage(target, Damage.DamageType.Physical,
+                new double[] {0, 25, 30, 35}[R.Level]/100*(target.MaxHealth - target.Health) +
+                (new double[] {0, 25, 35, 45}[R.Level] + 0.1*ObjectManager.Player.FlatPhysicalDamageMod)*
+                Math.Min(1 + ObjectManager.Player.Distance(target.ServerPosition)/15*0.09d, 10));
         }
 
         public override void ExecuteFlee()
@@ -623,7 +617,41 @@ namespace Marksman.Champions
 
         public override void PermaActive()
         {
+            if (GetValue<bool>("Misc.UseE.Immobile") && E.IsReady())
+            {
+                var target =
+                    HeroManager.Enemies.FirstOrDefault(
+                        x => x.IsValidTarget(E.Range) && x.IsImmobileUntil() > 0.5f);
+                if (target != null)
+                    E.Cast(target, false, true);
+            }
+
+            return;
+            var nCount = ObjectManager.Player.CountEnemiesInRange(565) >= 1;
+            var nEnemy =
+                HeroManager.Enemies.Find(
+                    e => e.IsValidTarget(565 + QExtraRange + 20) && e.Health < ObjectManager.Player.GetAutoAttackDamage(e));
+            
+                if (nCount && nEnemy == null && FishBoneActive )
+            {
+                Q.Cast();
+            }
+
+
         }
 
+
+    }
+
+    public static class JinxX
+    {
+        public static float FishboneRange => 75f + Jinx.Q.Level * 25f;
+
+        public static float MiniGunRange(this Obj_AI_Hero t)
+        {
+            return 525f + ObjectManager.Player.BoundingRadius + (t?.BoundingRadius ?? 0f);
+        }
+
+        public static float MegaGunRange => ObjectManager.Player.MiniGunRange() + FishboneRange + 25f;
     }
 }

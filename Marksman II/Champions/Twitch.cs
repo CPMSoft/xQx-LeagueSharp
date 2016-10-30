@@ -25,9 +25,9 @@ namespace Marksman.Champions
             E = new Spell(SpellSlot.E, 1200);
             R = new Spell(SpellSlot.R, 1000);
 
-            // Utility.HpBarDamageIndicator.DamageToUnit = GetComboDamage;
-            // Utility.HpBarDamageIndicator.Enabled = true;
-            Utils.Utils.PrintMessage("Twitch loaded.");
+             //Utility.HpBarDamageIndicator.DamageToUnit = GetComboDamage;
+             //Utility.HpBarDamageIndicator.Enabled = true;
+            Utils.Utils.PrintMessage("Twitch");
         }
 
         public static Obj_AI_Hero GetEMarkedEnemy
@@ -90,7 +90,7 @@ namespace Marksman.Champions
             }
         }
 
-        public override void Game_OnUpdate(EventArgs args)
+        public override void GameOnUpdate(EventArgs args)
         {
             if (Orbwalking.CanMove(100) && (ComboActive || HarassActive))
             {
@@ -152,7 +152,7 @@ namespace Marksman.Champions
             }
         }
 
-        public override void ExecuteLaneClear()
+        public override void ExecuteLane()
         {
             //var prepareMinions = Program.Config.Item("PrepareMinionsE.Lane").GetValue<StringList>().SelectedIndex;
             //if (prepareMinions != 0)
@@ -188,7 +188,7 @@ namespace Marksman.Champions
             //}
         }
 
-        public override void ExecuteJungleClear()
+        public override void ExecuteJungle()
         {
             var jungleWValue = Program.Config.Item("UseW.Jungle").GetValue<StringList>().SelectedIndex;
             if (W.IsReady() && jungleWValue != 0)
@@ -223,7 +223,7 @@ namespace Marksman.Champions
             var fComboDamage = 0f;
 
             if (E.IsReady())
-                fComboDamage += (float) ObjectManager.Player.GetSpellDamage(t, SpellSlot.E);
+                fComboDamage += E.GetDamage(t);
 
             if (ObjectManager.Player.GetSpellSlot("summonerdot") != SpellSlot.Unknown &&
                 ObjectManager.Player.Spellbook.CanUseSpell(ObjectManager.Player.GetSpellSlot("summonerdot")) ==
@@ -289,9 +289,9 @@ namespace Marksman.Champions
             return true;
         }
 
-        public override bool LaneClearMenu(Menu config)
+        public override bool LaneClearMenu(Menu menuLane)
         {
-            config.AddItem(
+            menuLane.AddItem(
                 new MenuItem("PrepareMinionsE.Lane", "Prepare Minions for E").SetValue(
                     new StringList(new[] {"Off", "Everytime", "Just Under Ally Turret"}, 2)));
 
@@ -303,7 +303,7 @@ namespace Marksman.Champions
                 strW[i] = "If Could Infect Minion Count>= " + i;
             }
 
-            config.AddItem(new MenuItem("UseW.Lane", "Use W:").SetValue(new StringList(strW, 0)));
+            menuLane.AddItem(new MenuItem("UseW.Lane", "Use W:").SetValue(new StringList(strW, 0)));
 
 
             var strE = new string[6];
@@ -314,11 +314,11 @@ namespace Marksman.Champions
                 strE[i] = "Minion Count >= " + i;
             }
 
-            config.AddItem(new MenuItem("UseE.Lane", "Use E:").SetValue(new StringList(strE, 0)));
+            menuLane.AddItem(new MenuItem("UseE.Lane", "Use E:").SetValue(new StringList(strE, 0)));
             return true;
         }
 
-        public override bool JungleClearMenu(Menu config)
+        public override bool JungleClearMenu(Menu menuJungle)
         {
             var strW = new string[4];
             strW[0] = "Off";
@@ -329,10 +329,10 @@ namespace Marksman.Champions
                 strW[i] = "If Could Infect Mobs Count>= " + i;
             }
 
-            config.AddItem(new MenuItem("UseW.Jungle", "Use W:").SetValue(new StringList(strW, 3)));
+            menuJungle.AddItem(new MenuItem("UseW.Jungle", "Use W:").SetValue(new StringList(strW, 3)));
 
             //config.AddItem(new MenuItem("UseW.Jungle", "Use W").SetValue(new StringList(new[] { "Off", "On", "Just big Monsters" }, 2)));
-            config.AddItem(
+            menuJungle.AddItem(
                 new MenuItem("UseE.Jungle", "Use E").SetValue(new StringList(new[] {"Off", "On", "Just big Monsters"}, 2)));
 
             return true;

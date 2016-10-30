@@ -18,7 +18,7 @@ namespace Marksman.Champions
 
         public Urgot()
         {
-            Utils.Utils.PrintMessage("Urgot loaded.");
+            Utils.Utils.PrintMessage("Urgot");
 
             Q = new Spell(SpellSlot.Q, 1000);
             QEx = new Spell(SpellSlot.Q, 1200);
@@ -26,8 +26,8 @@ namespace Marksman.Champions
             E = new Spell(SpellSlot.E, 900);
             R = new Spell(SpellSlot.R, 700);
 
-            Q.SetSkillshot(0.10f, 100f, 1600f, true, SkillshotType.SkillshotLine);
-            QEx.SetSkillshot(0.10f, 60f, 1600f, false, SkillshotType.SkillshotLine);
+            Q.SetSkillshot(0.10f, 100f, 1550f, true, SkillshotType.SkillshotLine);
+            QEx.SetSkillshot(0.10f, 60f, 1550f, false, SkillshotType.SkillshotLine);
 
             E.SetSkillshot(0.25f, 120f, 1500f, false, SkillshotType.SkillshotCircle);
 
@@ -57,7 +57,7 @@ namespace Marksman.Champions
             }
         }
 
-        public void AntiGapcloser_OnEnemyGapcloser(ActiveGapcloser gapcloser)
+        public override void AntiGapcloser_OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
             if (W.IsReady() && gapcloser.Sender.IsValidTarget(250f))
                 W.Cast();
@@ -109,6 +109,28 @@ namespace Marksman.Champions
                 }
             }
         }
+        public override void Obj_AI_Base_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
+        {
+            if (!ComboActive || !W.IsReady())
+            {
+                return;
+            }
+
+            if (sender.Type != GameObjectType.obj_AI_Hero)
+            {
+                return;
+            }
+
+            if (!sender.IsValid || sender.Team == ObjectManager.Player.Team)
+            {
+                return;
+            }
+
+            if (!sender.IsMe && sender.IsEnemy && sender is Obj_AI_Hero && args.Target.IsMe)
+            {
+                W.Cast();
+            }
+        }
 
         private static void UseSpells(bool useQ, bool useW, bool useE)
         {
@@ -139,8 +161,7 @@ namespace Marksman.Champions
                 }
             }
 
-            UseSpells(Program.ChampionClass.GetValue<bool>("UseQC"), Program.ChampionClass.GetValue<bool>("UseWC"),
-                Program.ChampionClass.GetValue<bool>("UseEC"));
+            //UseSpells(Program.ChampionClass.GetValue<bool>("UseQC"), Program.ChampionClass.GetValue<bool>("UseWC"), Program.ChampionClass.GetValue<bool>("UseEC"));
         }
 
         private static void UltInMyTeam()
@@ -164,8 +185,7 @@ namespace Marksman.Champions
                     R.CastOnUnit(t);
             }
 
-            UseSpells(Program.ChampionClass.GetValue<bool>("UseQC"), Program.ChampionClass.GetValue<bool>("UseWC"),
-                Program.ChampionClass.GetValue<bool>("UseEC"));
+            //UseSpells(Program.ChampionClass.GetValue<bool>("UseQC"), Program.ChampionClass.GetValue<bool>("UseWC"), Program.ChampionClass.GetValue<bool>("UseEC"));
         }
 
         private static void CastQ(Obj_AI_Hero t)
@@ -182,7 +202,7 @@ namespace Marksman.Champions
             }
         }
 
-        public override void Game_OnUpdate(EventArgs args)
+        public override void GameOnUpdate(EventArgs args)
         {
             if (R.Level > 0)
                 R.Range = 150*R.Level + 400;
@@ -218,7 +238,8 @@ namespace Marksman.Champions
                 {
                     if (t.IsValidTarget(E.Range))
                     {
-                        E.CastIfHitchanceEquals(t, HitChance.Medium);
+                        E.CastIfHitchanceGreaterOrEqual(t);
+                        //E.CastIfHitchanceEquals(t, HitChance.High);
                     }
                 }
 
@@ -233,7 +254,8 @@ namespace Marksman.Champions
                     else
                     {
                         if (t.IsValidTarget(Q.Range))
-                            CastQ(t);
+                            Q.CastIfHitchanceGreaterOrEqual(t);
+                            //CastQ(t);
                     }
                 }
             }
@@ -311,12 +333,12 @@ namespace Marksman.Champions
             return true;
         }
 
-        public override bool LaneClearMenu(Menu config)
+        public override bool LaneClearMenu(Menu menuLane)
         {
-            config.AddItem(new MenuItem("UseQL" + Id, "Use Q").SetValue(true));
+            menuLane.AddItem(new MenuItem("UseQL" + Id, "Use Q").SetValue(true));
             return true;
         }
-        public override bool JungleClearMenu(Menu config)
+        public override bool JungleClearMenu(Menu menuJungle)
         {
             return false;
         }

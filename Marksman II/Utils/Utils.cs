@@ -144,8 +144,10 @@ namespace Marksman.Utils
         public static void PrintMessage(string message)
         {
             Game.PrintChat(
-                "<font color='#FFFF00'>Marksman </font><font color = '#00FFFF'>Lite :</font> <font color='#d4d4d4'><font color='#FFFFFF'>" + message
-                + "</font>");
+    "<font color='#ff3232'>Successfully Loaded: </font><font color='#d4d4d4'><font color='#FFFFFF'>Marksman II - </font><font color='#FFFFFF'>" +
+    message + "</font>");
+
+                 
             //Notifications.AddNotification("Marksman: " + message, 4000);
         }
 

@@ -26,16 +26,18 @@ namespace Marksman.Champions
             Utils.Utils.PrintMessage("Corki loaded");
 
             Q = new Spell(SpellSlot.Q, 825f, TargetSelector.DamageType.Magical) { MinHitChance = HitChance.High };
-            W = new Spell(SpellSlot.W, 600f, TargetSelector.DamageType.Magical);
-            E = new Spell(SpellSlot.E, 700f);
-            R1 = new Spell(SpellSlot.R, 1300f, TargetSelector.DamageType.Magical) { MinHitChance = HitChance.High };
-            R2 = new Spell(SpellSlot.R, 1500f, TargetSelector.DamageType.Magical) { MinHitChance = HitChance.VeryHigh };
-
             Q.SetSkillshot(0.35f, 240f, 1300f, false, SkillshotType.SkillshotCircle);
+
+            W = new Spell(SpellSlot.W, 600f, TargetSelector.DamageType.Magical);
             W.SetSkillshot(0.35f, 140f, 1500f, false, SkillshotType.SkillshotLine);
+
+            E = new Spell(SpellSlot.E, 700f);
             E.SetSkillshot(0f, 45 * (float)Math.PI / 180, 1500, false, SkillshotType.SkillshotCone);
 
+            R1 = new Spell(SpellSlot.R, 1300f, TargetSelector.DamageType.Magical) { MinHitChance = HitChance.High };
             R1.SetSkillshot(0.2f, 40f, 2000f, true, SkillshotType.SkillshotLine);
+
+            R2 = new Spell(SpellSlot.R, 1500f, TargetSelector.DamageType.Magical) { MinHitChance = HitChance.VeryHigh };
             R2.SetSkillshot(0.2f, 40f, 2000f, true, SkillshotType.SkillshotLine);
         }
 
@@ -120,7 +122,7 @@ namespace Marksman.Champions
             }
         }
 
-        public override void Game_OnUpdate(EventArgs args)
+        public override void GameOnUpdate(EventArgs args)
         {
             if (R1.IsReady() && GetValue<bool>("UseRM"))
             {
@@ -186,7 +188,7 @@ namespace Marksman.Champions
             }
         }
 
-        public override void ExecuteLaneClear()
+        public override void ExecuteLane()
         {
             int laneQValue = GetValue<StringList>("Lane.UseQ").SelectedIndex;
             if (laneQValue != 0 && Q.IsReady())
@@ -231,7 +233,7 @@ namespace Marksman.Champions
             }
         }
 
-        public override void ExecuteJungleClear()
+        public override void ExecuteJungle()
         {
             int jungleQValue = GetValue<StringList>("Jungle.UseQ").SelectedIndex;
             if (jungleQValue != 0 && W.IsReady())
@@ -349,7 +351,7 @@ namespace Marksman.Champions
             return true;
         }
 
-        public override bool LaneClearMenu(Menu config)
+        public override bool LaneClearMenu(Menu menuLane)
         {
             string[] strQ = new string[4];
             {
@@ -358,11 +360,11 @@ namespace Marksman.Champions
                 {
                     strQ[i] = "Mobs Count >= " + i;
                 }
-                config.AddItem(new MenuItem("Lane.UseQ" + Id, "Q: Use").SetValue(new StringList(strQ, 2))).SetFontStyle(FontStyle.Regular, Q.MenuColor());
+                menuLane.AddItem(new MenuItem("Lane.UseQ" + Id, "Q: Use").SetValue(new StringList(strQ, 2))).SetFontStyle(FontStyle.Regular, Q.MenuColor());
             }
 
-            config.AddItem(new MenuItem("Lane.UseQ.Prepare" + Id, "Q: Prepare Minions for multi farm").SetValue(new StringList(new[] { "Off", "On", "Just Under Ally Turret" }, 2))).SetFontStyle(FontStyle.Regular, Q.MenuColor());
-            config.AddItem(new MenuItem("Lane.UseQ.DrawKM" + Id, "Q: Draw Killable Minions").SetValue(new Circle(true, Color.Wheat, 85f))).SetFontStyle(FontStyle.Regular, Q.MenuColor());
+            menuLane.AddItem(new MenuItem("Lane.UseQ.Prepare" + Id, "Q: Prepare Minions for multi farm").SetValue(new StringList(new[] { "Off", "On", "Just Under Ally Turret" }, 2))).SetFontStyle(FontStyle.Regular, Q.MenuColor());
+            menuLane.AddItem(new MenuItem("Lane.UseQ.DrawKM" + Id, "Q: Draw Killable Minions").SetValue(new Circle(true, Color.Wheat, 85f))).SetFontStyle(FontStyle.Regular, Q.MenuColor());
 
 
             string[] strW = new string[6];
@@ -385,7 +387,7 @@ namespace Marksman.Champions
                     strE[i] = "Mobs Count >= " + i;
                 }
 
-                config.AddItem(new MenuItem("Lane.UseE" + Id, "E: Use").SetValue(new StringList(strE, 2))).SetFontStyle(FontStyle.Regular, E.MenuColor());
+                menuLane.AddItem(new MenuItem("Lane.UseE" + Id, "E: Use").SetValue(new StringList(strE, 2))).SetFontStyle(FontStyle.Regular, E.MenuColor());
             }
 
             string[] strR = new string[4];
@@ -396,14 +398,14 @@ namespace Marksman.Champions
                     strR[i] = "Minion Count >= " + i;
                 }
 
-                config.AddItem(new MenuItem("Lane.UseR" + Id, "R:").SetValue(new StringList(strR, 3))).SetFontStyle(FontStyle.Regular, R1.MenuColor());
-                config.AddItem(new MenuItem("Lane.UseR.Lim" + Id, "R: Keep Stacks").SetValue(new Slider(0, 0, 7))).SetFontStyle(FontStyle.Regular, R1.MenuColor());
-                config.AddItem(new MenuItem("Lane.UseR.Bomb" + Id, "R: Rocket Type").SetValue(new StringList(new[] { "Small-Rocked", "Big-Rocked", "Both" }, 0))).SetFontStyle(FontStyle.Regular, R1.MenuColor());
+                menuLane.AddItem(new MenuItem("Lane.UseR" + Id, "R:").SetValue(new StringList(strR, 3))).SetFontStyle(FontStyle.Regular, R1.MenuColor());
+                menuLane.AddItem(new MenuItem("Lane.UseR.Lim" + Id, "R: Keep Stacks").SetValue(new Slider(0, 0, 7))).SetFontStyle(FontStyle.Regular, R1.MenuColor());
+                menuLane.AddItem(new MenuItem("Lane.UseR.Bomb" + Id, "R: Rocket Type").SetValue(new StringList(new[] { "Small-Rocked", "Big-Rocked", "Both" }, 0))).SetFontStyle(FontStyle.Regular, R1.MenuColor());
             }
             return true;
         }
 
-        public override bool JungleClearMenu(Menu config)
+        public override bool JungleClearMenu(Menu menuJungle)
         {
             string[] strQ = new string[4];
             {
@@ -415,7 +417,7 @@ namespace Marksman.Champions
                     strQ[i] = "Mobs Count >= " + i;
                 }
 
-                config.AddItem(new MenuItem("Jungle.UseQ" + Id, "Q: Use").SetValue(new StringList(strQ, 1))).SetFontStyle(FontStyle.Regular, Q.MenuColor());
+                menuJungle.AddItem(new MenuItem("Jungle.UseQ" + Id, "Q: Use").SetValue(new StringList(strQ, 1))).SetFontStyle(FontStyle.Regular, Q.MenuColor());
             }
 
             string[] strE = new string[4];
@@ -428,7 +430,7 @@ namespace Marksman.Champions
                     strE[i] = "Mobs Count >= " + i;
                 }
 
-                config.AddItem(new MenuItem("Jungle.UseE" + Id, "E: Use").SetValue(new StringList(strE, 1))).SetFontStyle(FontStyle.Regular, E.MenuColor());
+                menuJungle.AddItem(new MenuItem("Jungle.UseE" + Id, "E: Use").SetValue(new StringList(strE, 1))).SetFontStyle(FontStyle.Regular, E.MenuColor());
                 //config.AddItem(new MenuItem("Jungle.UseE.Lock" + Id, "E: Lock Position").SetValue(new StringList(new[] { "Off", "On", "On: if enemy so far" }, 1))).SetFontStyle(FontStyle.Regular, SharpDX.Color.GreenYellow);
             }
 
@@ -441,9 +443,9 @@ namespace Marksman.Champions
                     strR[i] = "Mob Count >= " + i;
                 }
 
-                config.AddItem(new MenuItem("Jungle.UseR" + Id, "R:").SetValue(new StringList(strR, 3))).SetFontStyle(FontStyle.Regular, R1.MenuColor());
-                config.AddItem(new MenuItem("Jungle.UseR.Lim" + Id, "R: Keep Stacks").SetValue(new Slider(0, 0, 7))).SetFontStyle(FontStyle.Regular, R1.MenuColor());
-                config.AddItem(new MenuItem("Jungle.UseR.Bomb" + Id, "R: Rocked Type").SetValue(new StringList(new[] { "Small-Rocked", "Big-Rocked", "Both" }, 0))).SetFontStyle(FontStyle.Regular, R1.MenuColor());
+                menuJungle.AddItem(new MenuItem("Jungle.UseR" + Id, "R:").SetValue(new StringList(strR, 3))).SetFontStyle(FontStyle.Regular, R1.MenuColor());
+                menuJungle.AddItem(new MenuItem("Jungle.UseR.Lim" + Id, "R: Keep Stacks").SetValue(new Slider(0, 0, 7))).SetFontStyle(FontStyle.Regular, R1.MenuColor());
+                menuJungle.AddItem(new MenuItem("Jungle.UseR.Bomb" + Id, "R: Rocked Type").SetValue(new StringList(new[] { "Small-Rocked", "Big-Rocked", "Both" }, 0))).SetFontStyle(FontStyle.Regular, R1.MenuColor());
             }
 
             return true;

@@ -51,8 +51,9 @@ namespace Marksman.Common
 
         public static Font Text;
         public static Font TextPassive;
+        public static Font TextUI, TextUIBold, TextWarning;
 
-   public static void Init()
+        public static void Init()
         {
             Text = new Font(
                 Drawing.Direct3DDevice,
@@ -62,19 +63,52 @@ namespace Marksman.Common
                     Height = 15,
                     OutputPrecision = FontPrecision.Default,
                     Quality = FontQuality.Default
-                    ,//Weight = FontWeight.Bold
-                    
+                    , //Weight = FontWeight.Bold
+
                 });
 
             TextPassive = new Font(
-               Drawing.Direct3DDevice,
-               new FontDescription
-               {
-                   FaceName = "Calibri",
-                   Height = 11,
-                   OutputPrecision = FontPrecision.Default,
-                   Quality = FontQuality.Draft
-               });
+                Drawing.Direct3DDevice,
+                new FontDescription
+                {
+                    FaceName = "Calibri",
+                    Height = 11,
+                    OutputPrecision = FontPrecision.Default,
+                    Quality = FontQuality.Draft
+                });
+
+            TextUI = new Font(
+                Drawing.Direct3DDevice,
+                new FontDescription
+                {
+                    FaceName = "Tahoma",
+                    //FaceName = "Segoe UI",
+                    Height = 13,
+                    OutputPrecision = FontPrecision.Default,
+                    Quality = FontQuality.Draft,
+                    Weight = FontWeight.DoNotCare
+                });
+            TextUIBold = new Font(
+                Drawing.Direct3DDevice,
+                new FontDescription
+                {
+                    FaceName = "Tahoma",
+                    //FaceName = "Segoe UI",
+                    Height = 13,
+                    OutputPrecision = FontPrecision.Default,
+                    Quality = FontQuality.Draft,
+                    Weight = FontWeight.Bold
+                });
+
+            TextWarning = new Font(Drawing.Direct3DDevice,
+                new FontDescription
+                {
+                    FaceName = "Malgun Gothic",
+                    Height = 60,
+                    OutputPrecision = FontPrecision.Default,
+                    Quality = FontQuality.Default
+                });;
+
 
             Drawing.OnPreReset += DrawingOnOnPreReset;
             Drawing.OnPostReset += DrawingOnOnPostReset;
@@ -113,18 +147,27 @@ namespace Marksman.Common
         {
             Text.Dispose();
             TextPassive.Dispose();
+            TextUI.Dispose();
+            TextUIBold.Dispose();
+            TextWarning.Dispose();
         }
 
         private static void DrawingOnOnPostReset(EventArgs args)
         {
             Text.OnResetDevice();
             TextPassive.OnResetDevice();
+            TextUI.OnResetDevice();
+            TextUIBold.OnResetDevice();
+            TextWarning.OnResetDevice();
         }
 
         private static void DrawingOnOnPreReset(EventArgs args)
         {
             Text.OnLostDevice();
             TextPassive.OnLostDevice();
+            TextUI.OnLostDevice();
+            TextUIBold.OnLostDevice();
+            TextWarning.OnLostDevice();
         }
 
         public static void DrawBox(float positionX, float positionY, float width, int height, System.Drawing.Color color, int borderwidth, System.Drawing.Color borderColor, string text = "")

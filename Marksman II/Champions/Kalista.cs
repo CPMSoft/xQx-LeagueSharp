@@ -88,7 +88,7 @@ namespace Marksman.Champions
             AppDomain.CurrentDomain.DomainUnload += CurrentDomainOnDomainUnload;
             AppDomain.CurrentDomain.ProcessExit += CurrentDomainOnDomainUnload;
 
-            Utils.Utils.PrintMessage("Kalista loaded.");
+            Utils.Utils.PrintMessage("Kalista");
         }
 
         private void CurrentDomainOnDomainUnload(object sender, EventArgs eventArgs)
@@ -278,7 +278,7 @@ namespace Marksman.Champions
             return E.IsReady() && E.CanCast(t) ? E.GetDamage(t) : 0;
         }
 
-        public override void Game_OnUpdate(EventArgs args)
+        public override void GameOnUpdate(EventArgs args)
         {
             SoulBoundSaver();
 
@@ -503,7 +503,7 @@ namespace Marksman.Champions
             return true;
         }
 
-        public override bool LaneClearMenu(Menu config)
+        public override bool LaneClearMenu(Menu menuLane)
         {
 
             string[] srtQ = new string[6];
@@ -514,8 +514,8 @@ namespace Marksman.Champions
                 srtQ[i] = "Minion Count >= " + i;
             }
 
-            config.AddItem(new MenuItem("UseQ.Lane" + Id, "Use Q:").SetValue(new StringList(srtQ, 0)));
-            config.AddItem(
+            menuLane.AddItem(new MenuItem("UseQ.Lane" + Id, "Use Q:").SetValue(new StringList(srtQ, 0)));
+            menuLane.AddItem(
                 new MenuItem("UseQ.Mode.Lane" + Id, "Use Q Mode:").SetValue(
                     new StringList(new[] { "Everytime", "Just Out of AA Range" }, 1)));
 
@@ -527,9 +527,9 @@ namespace Marksman.Champions
                 strW[i] = "Minion Count >= " + i;
             }
 
-            config.AddItem(new MenuItem("UseE.Lane" + Id, "Use E:").SetValue(new StringList(strW, 0)));
-            config.AddItem(new MenuItem("UseE.LaneNon" + Id, "Use E for Non Killable Minions:").SetValue(true));
-            config.AddItem(
+            menuLane.AddItem(new MenuItem("UseE.Lane" + Id, "Use E:").SetValue(new StringList(strW, 0)));
+            menuLane.AddItem(new MenuItem("UseE.LaneNon" + Id, "Use E for Non Killable Minions:").SetValue(true));
+            menuLane.AddItem(
                 new MenuItem("UseE.Prepare.Lane" + Id, "Prepare Minions for E Farm").SetValue(
                     new StringList(new[] { "Off", "On", "Just Under Ally Turret" }, 2)));
 
@@ -537,12 +537,12 @@ namespace Marksman.Champions
             return true;
         }
 
-        public override bool JungleClearMenu(Menu config)
+        public override bool JungleClearMenu(Menu menuJungle)
         {
-            config.AddItem(
+            menuJungle.AddItem(
                 new MenuItem("UseQJ" + Id, "Use Q").SetValue(
                     new StringList(new[] { "Off", "On", "Just big Monsters" }, 1)));
-            config.AddItem(
+            menuJungle.AddItem(
                 new MenuItem("UseEJ" + Id, "Use E").SetValue(
                     new StringList(new[] { "Off", "On", "Just big Monsters" }, 1)));
             return true;
@@ -560,7 +560,7 @@ namespace Marksman.Champions
                     .ToList();
         }
 
-        public override void ExecuteJungleClear()
+        public override void ExecuteJungle()
         {
             if (Q.IsReady())
             {
@@ -590,7 +590,7 @@ namespace Marksman.Champions
             }
         }
 
-        public override void ExecuteLaneClear()
+        public override void ExecuteLane()
         {
             if (Q.IsReady())
             {

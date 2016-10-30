@@ -25,7 +25,7 @@ namespace Marksman.Champions
 
         public Quinn()
         {
-            Utils.Utils.PrintMessage("Quinn loaded.");
+            Utils.Utils.PrintMessage("Quinn");
 
             Q = new Spell(SpellSlot.Q, 1010);
             E = new Spell(SpellSlot.E, 800);
@@ -33,8 +33,6 @@ namespace Marksman.Champions
 
             Q.SetSkillshot(0.25f, 160f, 1150, true, SkillshotType.SkillshotLine);
             E.SetTargetted(0.25f, 2000f);
-
-            AntiGapcloser.OnEnemyGapcloser += AntiGapcloser_OnEnemyGapcloser;
         }
 
         public override void Obj_AI_Base_OnBuffAdd(Obj_AI_Base sender, Obj_AI_BaseBuffAddEventArgs args)
@@ -46,7 +44,7 @@ namespace Marksman.Champions
             
         }
 
-        public void AntiGapcloser_OnEnemyGapcloser(ActiveGapcloser gapcloser)
+        public override void AntiGapcloser_OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
             if (Program.Config.Item("Misc.AntiGapCloser").GetValue<bool>())
             {
@@ -133,7 +131,7 @@ namespace Marksman.Champions
             }
         }
 
-        public override void Game_OnUpdate(EventArgs args)
+        public override void GameOnUpdate(EventArgs args)
         {
             var enemy =
                 HeroManager.Enemies.Find(
@@ -193,7 +191,7 @@ namespace Marksman.Champions
             }
         }
 
-        public override void ExecuteJungleClear()
+        public override void ExecuteJungle()
         {
             if (Q.IsReady())
             {
@@ -273,15 +271,15 @@ namespace Marksman.Champions
             return true;
         }
 
-        public override bool LaneClearMenu(Menu config)
+        public override bool LaneClearMenu(Menu menuLane)
         {
-            config.AddItem(new MenuItem("Lane.Non", ObjectManager.Player.ChampionName + " Doesn't Support Lane Clear"));
+            menuLane.AddItem(new MenuItem("Lane.Non", ObjectManager.Player.ChampionName + " Doesn't Support Lane Clear"));
             return true;
         }
-        public override bool JungleClearMenu(Menu config)
+        public override bool JungleClearMenu(Menu menuJungle)
         {
-            config.AddItem(new MenuItem("UseQJ" + Id, "Use Q").SetValue(new StringList(new[] { "Off", "On", "Just for big Monsters" }, 1)));
-            config.AddItem(new MenuItem("UseEJ" + Id, "Use E").SetValue(new StringList(new[] { "Off", "On", "Just for big Monsters" }, 1)));
+            menuJungle.AddItem(new MenuItem("UseQJ" + Id, "Use Q").SetValue(new StringList(new[] { "Off", "On", "Just for big Monsters" }, 1)));
+            menuJungle.AddItem(new MenuItem("UseEJ" + Id, "Use E").SetValue(new StringList(new[] { "Off", "On", "Just for big Monsters" }, 1)));
             return true;
         }
 

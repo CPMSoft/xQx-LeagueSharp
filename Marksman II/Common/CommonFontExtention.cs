@@ -12,7 +12,7 @@ namespace Marksman.Common
     {
         private static readonly Dictionary<string, Rectangle> Measured = new Dictionary<string, Rectangle>();
 
-        private static Rectangle GetMeasured(Font font, string text)
+        public static Rectangle GetMeasured(Font font, string text)
         {
             Rectangle rec;
             var key = font.Description.FaceName + font.Description.Width + font.Description.Height +
@@ -51,7 +51,7 @@ namespace Marksman.Common
                 null, text, (int)(position.X - measure.Width * 0.5f), (int)(position.Y - measure.Height * 0.5f), color);
         }
 
-        public static void DrawTextCentered(this Font font, string text, int x, int y, Color color)
+        public static void DrawTextCentered(this Font font, string text, float x, float y, Color color)
         {
             DrawTextCentered(font, text, new Vector2(x, y), color);
         }
@@ -63,7 +63,7 @@ namespace Marksman.Common
                 null, text, (int)(position.X - measure.Width), (int)(position.Y - measure.Height * 0.5f), color);
         }
 
-        public static void DrawTextLeft(this Font font, string text, int x, int y, Color color)
+        public static void DrawTextLeft(this Font font, string text, float x, int y, Color color)
         {
             DrawTextLeft(font, text, new Vector2(x, y), color);
         }
@@ -79,5 +79,16 @@ namespace Marksman.Common
         {
             DrawTextRight(font, text, new Vector2(x, y), color);
         }
+
+        public static void DrawTextNormal(this Font font, string text, Vector2 position, Color color)
+        {
+            font.DrawText(null, text, (int)position.X, (int)(position.Y - 7), color);
+        }
+
+        public static void DrawTextNormal(this Font font, string text, float x, float y, Color color)
+        {
+            DrawTextNormal(font, text, new Vector2(x, y), color);
+        }
+
     }
 }

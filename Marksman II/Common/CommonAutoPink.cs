@@ -43,7 +43,7 @@ namespace Marksman.Common
 
             Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
             GameObject.OnCreate += OnCreate;
-            Game.OnUpdate += Game_OnUpdate;
+            Game.OnUpdate += GameOnUpdate;
         }
 
         private static void OnProcessSpellCast(Obj_AI_Base enemy, GameObjectProcessSpellCastEventArgs args)
@@ -133,7 +133,7 @@ namespace Marksman.Common
         #endregion
 
         #region Vayne
-        private static void Game_OnUpdate(EventArgs args)
+        private static void GameOnUpdate(EventArgs args)
         {
             if (!localMenu.Item("Pink.Use").GetValue<bool>())
             {
