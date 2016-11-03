@@ -1,4 +1,4 @@
-﻿//JhinRShot : R Spell Name
+//JhinRShot : R Spell Name
 //JhinRShot : R Spell Ammo 
 #region
 
@@ -279,6 +279,11 @@ namespace Marksman.Champions
             if (!t.IsValidTarget())
             {
                 return;
+            }
+
+            if (t.IsValidTarget(Q.Range) && GetValue<bool>("Combo.Use.Q") && Q.IsReady())
+            {
+                Q.CastOnUnit(t);
             }
 
             if (GetValue<bool>("Combo.Use.W") && W.IsReady())
