@@ -78,6 +78,11 @@ namespace Marksman.Common
                             break;
                         }
 
+                    case "missfortune":
+                        {
+                            strSkins = new[] { "Classic Miss Fortune", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9" };
+                            break;
+                        }
                     case "sivir":
                         {
                             strSkins = new[] { "Classic Sivir", "Warrior Princess Sivir", "Spectacutar Sivir", "Huntress Sivir", "Bandit Sivir", "PAX Sivir", "Showstorm Sivir", "Warden Sivir", "Victorious Sivir" };

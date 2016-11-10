@@ -71,7 +71,7 @@ namespace Marksman.Champions
                             sender.Buffs.Where(
                                 s =>
                                     sender.IsEnemy
-                                    && sender.Distance(ObjectManager.Player.Position) < W.Range)
+                                    && sender.Distance(ObjectManager.Player.Position) <= W.Range)
                             from b in new[]
                             {
                                 "teleport", /* Teleport */
@@ -85,9 +85,13 @@ namespace Marksman.Champions
                             where args.Buff.Name.ToLower().Contains(b)
                             select fBuffs).FirstOrDefault();
 
-                    if (aBuff != null && aBuff.StartTime + CommonUtils.GetRandomDelay(1000, 1500) <= Game.Time)
+                    if (aBuff != null && aBuff.StartTime + CommonUtils.GetRandomDelay(250, 1000) <= Game.Time)
+                        //if (aBuff != null && aBuff.StartTime + CommonUtils.GetRandomDelay(250, 1000) <= Game.Time)
                     {
-                        CastW(sender.Position);
+                        Utility.DelayAction.Add(CommonUtils.GetRandomDelay(250, 1000), () =>
+                        {
+                            CastW(sender.Position);
+                        });
                         //W.Cast(sender.Position);
                     }
                 }
