@@ -548,7 +548,7 @@ namespace Marksman.Champions
             var useQ = GetValue<StringList>("Jungle.Q.Use").SelectedIndex;
             if (useQ != 0 && Q.IsReady() && isReloading)
             {
-                var jungleMobs = Utils.Utils.GetMobs(E.Range);
+                var jungleMobs = Utils.Utils.GetMobs(Q.Range);
 
                 if (useQ == 1 && !CommonUtils.IsWallBetween(ObjectManager.Player.Position, jungleMobs.Position))
                 {
