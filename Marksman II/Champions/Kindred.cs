@@ -268,26 +268,18 @@ namespace Marksman.Champions
             {
                 if (t.IsValidTarget(Q.Range + Orbwalking.GetRealAutoAttackRange(null) + 65) && !t.HasKindredUltiBuff())
                 {
-                    if (GetValue<StringList>("Combo.Q.Use").SelectedIndex != 0 && Q.IsReady())
+                    if (GetValue<bool>("Combo.Q.Use"))
                     {
-                        if (GetValue<StringList>("Combo.Q.Use").SelectedIndex == 1)
-                        {
-                            var x = CommonUtils.GetDashPosition(E, t, 400);
-                            Q.Cast(x);
-                        }
-
-                        if (GetValue<StringList>("Combo.Q.Use").SelectedIndex == 2)
-                        {
-                            Q.Cast(Game.CursorPos);                        }
-
-                        }
-
+                        var x = CommonUtils.GetDashPosition(E, t, 400);
+                        Q.Cast(x);
+                    }
+                    
                     if (GetValue<bool>("Combo.E.Use") && E.IsReady() && t.IsValidTarget(E.Range))
                     {
                         E.CastOnUnit(t);
                     }
 
-                    if (GetValue<bool>("Combo.W.Use") && W.IsReady() && t.IsValidTarget(W.Range / 2))
+                    if (GetValue<bool>("Combo.W.Use") && W.IsReady() && t.IsValidTarget(W.Range/2))
                     {
                         W.Cast(t.Position);
                     }
@@ -297,7 +289,7 @@ namespace Marksman.Champions
 
         public override bool ComboMenu(Menu config)
         {
-            config.AddItem(new MenuItem("Combo.Q.Use" + Id, "Q:").SetValue(new StringList(new []{"Off", "Smart", "Cursor Position"}, 1))).SetFontStyle(FontStyle.Regular, Q.MenuColor());
+            config.AddItem(new MenuItem("Combo.Q.Use" + Id, "Q:").SetValue(true)).SetFontStyle(FontStyle.Regular, Q.MenuColor());
             config.AddItem(new MenuItem("Combo.W.Use" + Id, "W:").SetValue(true)).SetFontStyle(FontStyle.Regular, W.MenuColor());
             config.AddItem(new MenuItem("Combo.E.Use" + Id, "E:").SetValue(true)).SetFontStyle(FontStyle.Regular, E.MenuColor());
             config.AddItem(new MenuItem("Combo.R.Use" + Id, "R:").SetValue(true)).SetFontStyle(FontStyle.Regular, R.MenuColor());
@@ -362,6 +354,7 @@ namespace Marksman.Champions
 
         public override void ExecuteLane()
         {
+            return;
             var useQ = Program.Config.Item("UseQL").GetValue<StringList>().SelectedIndex;
 
             var minion =
@@ -398,9 +391,9 @@ namespace Marksman.Champions
 
         public override bool JungleClearMenu(Menu menuJungle)
         {
-            menuJungle.AddItem(new MenuItem("UseQJ" + Id, "Use Q").SetValue(new StringList(new[] { "Off", "On", "Just big Monsters" }, 1)));
-            menuJungle.AddItem(new MenuItem("UseWJ" + Id, "Use W").SetValue(new StringList(new[] { "Off", "On", "Just big Monsters" }, 1)));
-            menuJungle.AddItem(new MenuItem("UseEJ" + Id, "Use E").SetValue(new StringList(new[] { "Off", "On", "Just big Monsters" }, 1)));
+            menuJungle.AddItem(new MenuItem("Use.Q.Jungle" + Id, "Q:").SetValue(new StringList(new[] { "Off", "On", "Just big Monsters" }, 1)));
+            menuJungle.AddItem(new MenuItem("Use.W.Jungle" + Id, "W:").SetValue(new StringList(new[] { "Off", "On", "Just big Monsters" }, 1)));
+            menuJungle.AddItem(new MenuItem("Use.E.Jungle" + Id, "E:").SetValue(new StringList(new[] { "Off", "On", "Just big Monsters" }, 1)));
 
             return true;
         }
@@ -412,28 +405,32 @@ namespace Marksman.Champions
 
             if (jungleMobs != null)
             {
-                switch (GetValue<StringList>("UseQJ").SelectedIndex)
+                switch (GetValue<StringList>("Use.Q.Jungle").SelectedIndex)
                 {
                     case 1:
-                        {
-                            if (jungleMobs.IsValidTarget(Orbwalking.GetRealAutoAttackRange(null) + 65))
-                                Q.Cast(jungleMobs.IsValidTarget(Orbwalking.GetRealAutoAttackRange(null) + 65)
-                                    ? Game.CursorPos
-                                    : jungleMobs.Position);
-                            break;
-                        }
+                    {
+                        if (jungleMobs.IsValidTarget(Orbwalking.GetRealAutoAttackRange(null) + 65))
+                            Q.Cast(jungleMobs.IsValidTarget(Orbwalking.GetRealAutoAttackRange(null) + 65)
+                                ? Game.CursorPos
+                                : jungleMobs.Position);
+                        break;
+                    }
                     case 2:
+                    {
+                        jungleMobs = Marksman.Utils.Utils.GetMobs(
+                            Q.Range + Orbwalking.GetRealAutoAttackRange(null) + 65,
+                            Marksman.Utils.Utils.MobTypes.BigBoys);
+                        if (jungleMobs != null)
                         {
-                            jungleMobs = Marksman.Utils.Utils.GetMobs(Q.Range + Orbwalking.GetRealAutoAttackRange(null) + 65,Marksman.Utils.Utils.MobTypes.BigBoys);
-                            if (jungleMobs != null)
-                            {
-                                Q.Cast(jungleMobs.IsValidTarget(Orbwalking.GetRealAutoAttackRange(null) + 65) ? Game.CursorPos : jungleMobs.Position);
-                            }
-                            break;
+                            Q.Cast(jungleMobs.IsValidTarget(Orbwalking.GetRealAutoAttackRange(null) + 65)
+                                ? Game.CursorPos
+                                : jungleMobs.Position);
                         }
+                        break;
+                    }
                 }
 
-                switch (GetValue<StringList>("UseWJ").SelectedIndex)
+                switch (GetValue<StringList>("Use.W.Jungle").SelectedIndex)
                 {
                     case 1:
                         {
@@ -452,7 +449,7 @@ namespace Marksman.Champions
                         }
                 }
 
-                switch (GetValue<StringList>("UseEJ").SelectedIndex)
+                switch (GetValue<StringList>("Use.E.Jungle").SelectedIndex)
                 {
                     case 1:
                         {
