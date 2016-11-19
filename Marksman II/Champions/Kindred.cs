@@ -270,8 +270,9 @@ namespace Marksman.Champions
                 {
                     if (GetValue<bool>("Combo.Q.Use"))
                     {
-                        var x = CommonUtils.GetDashPosition(E, t, 400);
-                        Q.Cast(x);
+		    	Q.Cast(Game.CursorPos);
+                        //var x = CommonUtils.GetDashPosition(E, t, 400);
+                        //Q.Cast(x);
                     }
                     
                     if (GetValue<bool>("Combo.E.Use") && E.IsReady() && t.IsValidTarget(E.Range))
