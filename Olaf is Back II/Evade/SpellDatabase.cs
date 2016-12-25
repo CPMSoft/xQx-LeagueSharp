@@ -166,7 +166,9 @@ namespace Olaf.Evade
                     IsDangerous = true,
                 });
 
-            #endregion Malzahar
+            #endregion Warwick
+
+            #region Malzahar
 
             Spells.Add(
                 new SpellData
@@ -210,6 +212,9 @@ namespace Olaf.Evade
                 });
 
             #endregion Poppy
+
+            #endregion TargetedSkills
+
         }
 
         public static SpellData GetBySourceObjectName(string objectName)
